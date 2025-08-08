@@ -1,5 +1,6 @@
-import { VisPluginTableModel } from './vis_table_plugin'
 import * as d3 from './d3loader'
+import { downloadTableAsExcel } from './download_link'
+import { VisPluginTableModel } from './vis_table_plugin'
 
 const themes = {
   traditional: require('./theme_traditional.css'),
@@ -412,6 +413,95 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, element)
 
   renderTable().then(() => {
     document.getElementById('reportTable').classList.add('reveal')
+
+    // Add download button only if exposeDownloadLink is true
+    if (config.exposeDownloadLink) {
+      const downloadButton = d3
+        .select("#visContainer")
+        .append("button")
+        .attr("id", "downloadButton")
+        .attr("title", "Download xls")
+        .style("position", "fixed")
+        .style("top", "10px")
+        .style("right", "10px")
+        .style("z-index", "1001")
+        .style("background", "white")
+        .style("padding", "0px")
+        .style("border", "none")
+        .style("cursor", "pointer")
+        .style("visibility", "hidden")
+        .style("border-radius", "50%")
+        .style("width", "32px")
+        .style("height", "32px")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("justify-content", "center")
+        .style("box-shadow", "0 2px 4px rgba(0, 0, 0, 0.1)")
+        .on("click", () => {
+          const el = d3.select('#downloadButton')
+          el.attr("class", "loading")
+          // wait for the class to be registered
+          setTimeout(async () => {
+            try {
+              await downloadTableAsExcel();
+            } finally {
+              el.attr("class", "")
+            }
+          }, 250)
+        });
+
+      // Add SVG icon
+      downloadButton
+        .append("svg")
+        .attr("width", "16")
+        .attr("height", "16")
+        .attr("viewBox", "0 0 640 640")
+        .style("fill", "#666")
+        .html(
+          '<path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM303 505C312.4 514.4 327.6 514.4 336.9 505L400.9 441C410.3 431.6 410.3 416.4 400.9 407.1C391.5 397.8 376.3 397.7 367 407.1L344 430.1L344 344C344 330.7 333.3 320 320 320C306.7 320 296 330.7 296 344L296 430.1L273 407.1C263.6 397.7 248.4 397.7 239.1 407.1C229.8 416.5 229.7 431.7 239.1 441L303.1 505z"/>'
+        );
+
+      // Add CSS hover styles
+      d3.select("#visContainer")
+        .style("position", "relative")
+        .style("cursor", "default")
+        .on("mouseenter", () => {
+          d3.select("#visContainer").style("cursor", "default");
+        });
+
+      // Add CSS rules for hover and loading
+      const style = document.createElement("style");
+      style.textContent = `
+        #visContainer:hover #downloadButton {
+          visibility: visible !important;
+        }
+        
+        #downloadButton.loading {
+          pointer-events: none;
+        }
+        
+        #downloadButton.loading::after {
+          content: '';
+          position: absolute;
+          top: 0px;
+          left: 0px;
+          width: 100%;
+          height: 100%;
+          border: 2px solid #e0e0e0;
+          border-top: 2px solid #666;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          box-sizing: border-box;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
     if (config.customTheme === 'animate') {
       document.getElementById('visSvg').classList.remove('hidden')
       addOverlay()
