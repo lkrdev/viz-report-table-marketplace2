@@ -9,6 +9,7 @@ env:
   APP_NAME: report-table
   BUCKET_NAME: ${{ secrets.CDN_BUCKET_NAME }}
   TAG: ${{ github.event.release.tag_name }}
+  TYPE: viz
 
 jobs:
   build-and-upload-frontend:
@@ -46,14 +47,14 @@ jobs:
         with:
           process_gcloudignore: false
           path: dist
-          destination: ${{ env.BUCKET_NAME }}/apps/${{ env.APP_NAME }}/${{ env.TAG }}
+          destination: ${{ env.BUCKET_NAME }}/${{ env.TYPE }}/${{ env.APP_NAME }}/${{ env.TAG }}
           parent: false
       - name: Upload frontend bundle to GCS
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           process_gcloudignore: false
           path: dist
-          destination: ${{ env.BUCKET_NAME }}/apps/${{ env.APP_NAME }}/latest
+          destination: ${{ env.BUCKET_NAME }}/${{ env.TYPE }}/${{ env.APP_NAME }}/latest
           parent: false
 
       - name: Set up Cloud SDK
@@ -63,5 +64,5 @@ jobs:
         run: |
           gcloud compute url-maps invalidate-cdn-cache ${{ secrets.CDN_URL_MAP }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
-            --path=/apps/${{ env.APP_NAME }}/latest/* \
+            --path=/${{ env.TYPE }}/${{ env.APP_NAME }}/latest/* \
             --async
