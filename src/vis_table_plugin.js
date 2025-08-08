@@ -1,16 +1,16 @@
-import SSF from "ssf"
 import { cloneDeep } from "lodash"
+import SSF from "ssf"
 
-import { 
-  ModelDimension, 
-  ModelPivot, 
-  ModelMeasure, 
-  CellSeries, 
-  ColumnSeries, 
-  Row, 
-  Column, 
-  DataCell, 
-  HeaderCell 
+import {
+  CellSeries,
+  Column,
+  ColumnSeries,
+  DataCell,
+  HeaderCell,
+  ModelDimension,
+  ModelMeasure,
+  ModelPivot,
+  Row
 } from './vis_primitives'
 
 const tableModelCoreOptions = {
@@ -195,6 +195,13 @@ const tableModelCoreOptions = {
     label: "Transpose Table",
     default: false,
     order: 100,
+  }, 
+  exposeDownloadLink: {
+    section: "Table",
+    type: "boolean",
+    label: "Expose Download Link",
+    default: false,
+    order: 101
   },
 }
 /**
