@@ -17,7 +17,6 @@ export async function downloadTableAsExcel() {
       "border-top",
       "border-left",
       "border-right",
-      "background-color",
     ];
   
     var tbl = document.getElementById("reportTable");
