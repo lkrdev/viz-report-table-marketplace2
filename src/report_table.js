@@ -174,6 +174,29 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, element)
       .selectAll('tr')
       .data(dataTable.getDataRows()).enter()
         .append('tr')
+        .attr('class', d => d.type)
+        .attr('data-subtotal-id', d => {
+          if ((d.type === 'subtotal' || d.type === 'line_item') && d.sort && d.sort.length > 1 && d.sort[1].name === 'subtotal') {
+            return d.sort[1].value;
+          }
+          return null;
+        })
+        .style('cursor', d => d.type === 'subtotal' ? 'pointer' : 'default')
+        .on('click', function(d) {
+          if (d.type === 'subtotal') {
+            const isCollapsed = this.classList.toggle('collapsed');
+            const subtotalIndex = this.getAttribute('data-subtotal-id');
+            const tbody = this.parentNode;
+            const rows = tbody.querySelectorAll('tr.line_item[data-subtotal-id="' + CSS.escape(subtotalIndex) + '"]');
+            rows.forEach(row => {
+              row.style.display = isCollapsed ? 'none' : '';
+            });
+            const arrowSpan = this.querySelector('.subtotal-arrow');
+            if (arrowSpan) {
+              arrowSpan.innerHTML = isCollapsed ? '&#9658;' : '&#9660;';
+            }
+          }
+        })
         .on('mouseover', function() { 
           if (dataTable.showHighlight) {
             this.classList.toggle('hover') 
@@ -189,7 +212,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, element)
           .enter()
 
     table_rows.append('td')
-      .text(d => {
+      .each(function(d) {
         var text = ''
         if (Array.isArray(d.value)) {                     // cell is a list or number_list
           text = !(d.rendered === null) ? d.rendered : d.value.join(' ')
@@ -205,8 +228,21 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, element)
           text = d.value   
         }
         text = String(text)
-        return text ? text.replace('-', '\u2011') : text  // prevents wrapping on minus sign / hyphen
-      }) 
+        text = text ? text.replace('-', '\u2011') : text
+
+        var isFirstTd = Array.from(this.parentNode.children).indexOf(this) === 0
+        if (isFirstTd && d.rowid && d.rowid.startsWith('Subtotal')) {
+          var arrow = this.parentNode.classList.contains('collapsed') ? '&#9658;' : '&#9660;';
+          var span = document.createElement('span');
+          span.className = 'subtotal-arrow';
+          span.style.display = 'inline-block';
+          span.style.width = '1.2em';
+          span.style.textAlign = 'center';
+          span.innerHTML = arrow;
+          this.appendChild(span);
+        }
+        this.appendChild(document.createTextNode(text));
+      })
       .attr('rowspan', d => d.rowspan)
       .attr('colspan', d => d.colspan)
       .style('text-align', d => d.align)
@@ -269,19 +305,24 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, element)
           d3.select("#tooltip").classed("hidden", true)
         }
       })
-      .on('click', d => {
-        // Looker applies padding based on the top of the viz when opening a drill field but 
-        // if part of the viz container is hidden underneath the iframe, the drill menu opens off screen
-        // We make a simple copy of the d3.event and account for pageYOffser as MouseEvent attributes are read only. 
-        let event = {
-          metaKey: d3.event.metaKey,
-          pageX: d3.event.pageX,
-          pageY: d3.event.pageY - window.pageYOffset
+      .on('click', function(d) {
+        if (d.links && d.links.length > 0) {
+          d3.event.stopPropagation()
+          // Looker applies padding based on the top of the viz when opening a drill field but
+          // if part of the viz container is hidden underneath the iframe, the drill menu opens off screen
+          // We make a simple copy of the d3.event and account for pageYOffser as MouseEvent attributes are read only.
+          let event = {
+            metaKey: d3.event.metaKey,
+            pageX: d3.event.pageX,
+            pageY: d3.event.pageY - window.pageYOffset
+          }
+          if (typeof LookerCharts !== 'undefined') {
+            LookerCharts.Utils.openDrillMenu({
+              links: d.links,
+              event: event
+            })
+          }
         }
-        LookerCharts.Utils.openDrillMenu({
-          links: d.links,
-          event: event
-        })
       })
 
     if (use_minicharts) {
