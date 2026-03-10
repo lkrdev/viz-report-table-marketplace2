@@ -114,6 +114,13 @@ table.reportTable td {
   font-weight: bold !important;
 }
 
+tr.subtotal + tr.subtotal > td.subtotal,
+tr.subtotal + tr.total > td.total,
+tr.total + tr.subtotal > td.subtotal {
+  border-top: 4px double #000000 !important;
+  border-bottom: 2px solid #000000 !important;
+}
+
 .total.transposed {
   border-top: 0px !important;
   background: #D3D3D3;
