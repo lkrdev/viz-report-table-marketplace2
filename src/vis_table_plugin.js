@@ -247,7 +247,7 @@ class VisPluginTableModel {
     this.useShortName = config.useShortName || false
     this.useViewName = config.useViewName || false
     this.addRowSubtotals = config.rowSubtotals || false
-    this.addSubtotalDepth = parseInt(config.subtotalDepth)|| this.dimensions.length - 1
+    this.addSubtotalDepth = config.subtotalDepth === '(all)' ? '(all)' : (parseInt(config.subtotalDepth)|| this.dimensions.length - 1)
     this.addColSubtotals = config.colSubtotals || false
     this.spanRows = false || config.spanRows
     this.spanCols = false || config.spanCols
@@ -351,6 +351,7 @@ class VisPluginTableModel {
         subtotal_options.push(subtotal_option)
       }
     })
+    subtotal_options.push({'(all)': '(all)'})
 
     newOptions['subtotalDepth'] = {
       section: "Table",
@@ -358,7 +359,7 @@ class VisPluginTableModel {
       label: "Sub Total Depth",
       display: 'select',
       values: subtotal_options,
-      default: "1",
+      default: "(all)",
       order: 5,
     }
 
@@ -988,7 +989,7 @@ class VisPluginTableModel {
 
       row.sort = [
         {name: 'section', value: 0}, 
-        {name: 'unknown', value: 0},
+        {name: 'subtotal', value: 0},
         {name: 'original_row', value: i}
       ]
       this.data.push(row)
@@ -1103,7 +1104,7 @@ class VisPluginTableModel {
     }
     totalsRow.sort = [
       {name: 'section', value: 1},
-      {name: 'unknown', value: 0},
+      {name: 'subtotal', value: 0},
       {name: 'original_row', value: 0}
     ]
     this.data.push(totalsRow)
@@ -1170,7 +1171,7 @@ class VisPluginTableModel {
       }
       othersRow.sort = [
         {name: 'section', value: 1},
-        {name: 'unknown', value: -1},
+        {name: 'subtotal', value: -1},
         {name: 'original_row', value: -1}
       ] 
       this.data.push(othersRow)
@@ -1260,43 +1261,59 @@ class VisPluginTableModel {
    *            // the string values in the line items.
    */
   addSubTotals () { 
-    var depth = this.addSubtotalDepth
+    var depths = this.addSubtotalDepth === '(all)'
+                 ? Array.from({length: this.dimensions.length - 1}, (_, i) => i + 1)
+                 : [this.addSubtotalDepth]
 
-    // BUILD GROUPINGS / SORT VALUES
-    var subTotalGroups = []
-    var latest_group = []
-    this.data.forEach((row, i) => {    
-      if (row.type !== 'total') {
-        var group = []
-        for (var g = 0; g < depth; g++) {
-          var dim = this.dimensions[g].name
-          group.push(row.data[dim].value)
+    // Initialize row.sort to handle multiple subtotal depths
+    this.data.forEach((row, i) => {
+      if (row.type !== 'total' && row.type !== 'subtotal') {
+        var sectionVal = row.sort && row.sort.find(s => s.name === 'section') ? row.sort.find(s => s.name === 'section').value : 0;
+        var originalRowVal = row.sort && row.sort.find(s => s.name === 'original_row') ? row.sort.find(s => s.name === 'original_row').value : i;
+        row.sort = [{name: 'section', value: sectionVal}];
+        for (let d = 0; d < depths.length; d++) {
+          row.sort.push({name: 'subtotal_' + d, value: 0});
         }
-        if (group.join('|') !== latest_group.join('|')) {
-          subTotalGroups.push(group)
-          latest_group = group
-        }
-        row.sort = [
-          {name: 'section', value: 0},
-          {name: 'subtotal', value: subTotalGroups.length-1},
-          {name: 'original_row', value: i}
-        ]
+        row.sort.push({name: 'original_row', value: originalRowVal});
       }
-      
-      if (row.id === 'Others' && row.type === 'line_item') {
-        row.hide = true
-      }
-    })
+    });
 
-    // GENERATE DATA ROWS FOR SUBTOTALS
-    subTotalGroups.forEach((subTotalGroup, s) => {
-      var subtotalRow = new Row('subtotal')
-      var dims = subTotalGroup.join('|') ? subTotalGroup.join('|') : 'Others'
-      subtotalRow.id = ['Subtotal', dims].join('|')
+    depths.forEach((depth, depthIndex) => {
+      // BUILD GROUPINGS / SORT VALUES
+      var subTotalGroups = []
+      var latest_group = []
+      this.data.forEach((row, i) => {
+        if (row.type === 'line_item') {
+          var group = []
+          for (var g = 0; g < depth; g++) {
+            var dim = this.dimensions[g].name
+            group.push(row.data[dim].value)
+          }
+          if (group.join('|') !== latest_group.join('|')) {
+            subTotalGroups.push(group)
+            latest_group = group
+          }
+          var subSortObj = row.sort.find(s => s.name === 'subtotal_' + depthIndex);
+          if (subSortObj) {
+            subSortObj.value = subTotalGroups.length - 1;
+          }
+        }
+
+        if (row.id === 'Others' && row.type === 'line_item') {
+          row.hide = true
+        }
+      })
+
+      // GENERATE DATA ROWS FOR SUBTOTALS
+      subTotalGroups.forEach((subTotalGroup, s) => {
+        var subtotalRow = new Row('subtotal')
+        var dims = subTotalGroup.join('|') ? subTotalGroup.join('|') : 'Others'
+        subtotalRow.id = ['Subtotal', dims].join('|')
+        subtotalRow.depthIndex = depthIndex;
 
       this.columns.forEach(column => {
         if (column.modelField.type === 'dimension') {
-          if ([this.firstVisibleDimension, '$$$_index_$$$'].includes(column.id)) {
+          if ([this.firstVisibleDimension, '$_index_$'].includes(column.id)) {
             var rowspan = 1
             var colspan = this.useIndexColumn ? 1 : this.dimensions.filter(d => !d.hide).length
           } else {
@@ -1312,7 +1329,7 @@ class VisPluginTableModel {
             colid: column.id,
             rowid: subtotalRow.id
           })
-          if (column.id === '$$$_index_$$$' || column.id === this.firstVisibleDimension ) {
+          if (column.id === '$_index_$' || column.id === this.firstVisibleDimension ) {
             if (this.genericLabelForSubtotals) {
               cell.value = 'Subtotal'
               cell.rendered = 'Subtotal'
@@ -1339,11 +1356,14 @@ class VisPluginTableModel {
             var subtotal_items = 0
             var rendered = ''
             this.data.forEach(data_row => {
-              if (data_row.type == 'line_item' && data_row.sort[1].value == s) { // data_row.sort[1].value == s checks whether its part of the current subtotal group
-                var value = data_row.data[column.id].value
-                if (Number.isFinite(value)) {
-                  subtotal_value += value
-                  subtotal_items++
+              if (data_row.type == 'line_item') {
+                var sortObj = data_row.sort.find(st => st.name === 'subtotal_' + depthIndex);
+                if (sortObj && sortObj.value == s) {
+                  var value = data_row.data[column.id].value
+                  if (Number.isFinite(value)) {
+                    subtotal_value += value
+                    subtotal_items++
+                  }
                 }
               } 
             })
@@ -1372,12 +1392,24 @@ class VisPluginTableModel {
           }
         }
       })
-      subtotalRow.sort = [
-        {name: 'section', value: 0},
-        {name: 'subtotal', value: s}, 
-        {name: 'original_row', value: 9999}
-      ]
+      subtotalRow.sort = [{name: 'section', value: 0}];
+      for (let d = 0; d < depths.length; d++) {
+        if (d < depthIndex) {
+          // Find the parent group index
+          var parentLineItem = this.data.find(r => r.type === 'line_item' &&
+            r.sort.find(st => st.name === 'subtotal_' + depthIndex)?.value === s);
+          var parentVal = parentLineItem ?
+            parentLineItem.sort.find(st => st.name === 'subtotal_' + d)?.value : 0;
+          subtotalRow.sort.push({name: 'subtotal_' + d, value: parentVal});
+        } else if (d === depthIndex) {
+          subtotalRow.sort.push({name: 'subtotal_' + d, value: s});
+        } else {
+          subtotalRow.sort.push({name: 'subtotal_' + d, value: 9999});
+        }
+      }
+      subtotalRow.sort.push({name: 'original_row', value: 9999});
       this.data.push(subtotalRow)
+    })
     })
     this.sortData()
     this.hasSubtotals = true

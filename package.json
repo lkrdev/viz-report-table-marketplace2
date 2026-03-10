@@ -7,9 +7,7 @@
   "author": "Jon Walls <8075115+ContrastingSounds@users.noreply.github.com>",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
     "css-loader": "^3.6.0",
-    "playwright": "^1.58.2",
     "style-loader": "^1.2.1",
     "url-loader": "^4.1.0",
     "webpack": "^5.67.0",
