@@ -1,6 +1,8 @@
+import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, INDEX_COLUMN, RIGHT_OFFSET_BASE } from './constants'
 import * as d3 from './d3loader'
 import { downloadTableAsExcel } from './download_link'
 import { VisPluginTableModel } from './vis_table_plugin'
+
 
 const themes = {
   traditional: require('./theme_traditional.css'),
@@ -51,29 +53,17 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   })
 
   const syncRowVisibility = function(skipUpdateConfig = false) {
-    var rows = Array.from(document.querySelectorAll('#reportTable tbody tr'))
-    var subtotalRows = rows.filter(r => r.classList.contains('subtotal'))
-    var collapsedPaths = subtotalRows.filter(r => r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
-    var unfoldedPaths = subtotalRows.filter(r => !r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
+    const rows = Array.from(document.querySelectorAll('#reportTable tbody tr'))
+    const subtotalRows = rows.filter(r => r.classList.contains('subtotal'))
+    const collapsedPaths = subtotalRows.filter(r => r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
+    const unfoldedPaths = subtotalRows.filter(r => !r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
     
     rows.forEach(tr => {
-        var trPath = tr.getAttribute('data-subtotal-path')
-        var isHidden = false
-        for (var cp of collapsedPaths) {
-            if (trPath && trPath.startsWith(cp + '|')) {
-                isHidden = true;
-                break;
-            }
-            if (trPath && trPath === cp && tr.classList.contains('line_item')) {
-                isHidden = true;
-                break;
-            }
-        }
-        if (isHidden) {
-            tr.style.display = 'none'
-        } else {
-            tr.style.display = ''
-        }
+        const trPath = tr.getAttribute('data-subtotal-path');
+        const isHidden = trPath && collapsedPaths.some(cp => 
+            trPath.startsWith(cp + '|') || (trPath === cp && tr.classList.contains('line_item'))
+        );
+        tr.style.display = isHidden ? 'none' : '';
     })
     
     if (updateConfig && !skipUpdateConfig) {
@@ -84,6 +74,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         }
     }
   }
+
+  const updateRowIcon = function(rowEl) {
+    const isCollapsed = rowEl.classList.contains('collapsed')
+    const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15'
+    d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
+  }
+
 
   const renderTable = async function() {
     const getTextWidth = function(text, font = '') {
@@ -145,7 +142,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           var maxLength = cs.series.values.reduce((a, b) => Math.max(getTextWidth(a), getTextWidth(b)))
           var columnId = cs.column.modelField.name
           if (dataTable.useIndexColumn) {
-            columnId = '$$$_index_$$$'
+            columnId = INDEX_COLUMN
             maxLength += 15
           }
           columnTextWidths[columnId] = Math.ceil(maxLength)
@@ -270,9 +267,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         text = text ? text.replace('-', '\u2011') : text  // prevents wrapping on minus sign / hyphen
 
         if (d.cell_style.includes('subtotal') && d.cell_style.includes('dimension') && String(d.value).indexOf('Subtotal|Others') === -1) {
-            var isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === '$$$_index_$$$')
+            const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
             if (isFirstCol) {
-                var rowPath = d.rowid.substring(9);
+                const rowPath = d.rowid.substring(9);
                 var isCollapsed = false;
                 if (config.startFolded) {
                     isCollapsed = !(config.expandSubtotals && config.expandSubtotals.split(',').includes(rowPath))
@@ -353,16 +350,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         if (d3.event.target.closest('.row-collapse-icon')) {
             d3.event.preventDefault()
             d3.event.stopPropagation()
-            var rowEl = this.closest('tr')
-            var isCollapsed = rowEl.classList.contains('collapsed')
-            
-            if (isCollapsed) {
-                rowEl.classList.remove('collapsed')
-                d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 15 12 9 18 15')
-            } else {
-                rowEl.classList.add('collapsed')
-                d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 9 12 15 18 9')
-            }
+            const rowEl = this.closest('tr')
+            rowEl.classList.toggle('collapsed')
+            updateRowIcon(rowEl)
 
             syncRowVisibility()
             return;
@@ -521,8 +511,8 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         "cursor": "pointer",
         "visibility": "hidden",
         "border-radius": "50%",
-        "width": "32px",
-        "height": "32px",
+        "width": ACTION_BUTTON_SIZE + "px",
+        "height": ACTION_BUTTON_SIZE + "px",
         "display": "flex",
         "align-items": "center",
         "justify-content": "center",
@@ -539,7 +529,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         .attr("title", "Download xls")
       
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => downloadButton.style(k, v))
-      downloadButton.style("top", "10px").style("right", "10px")
+      downloadButton.style("top", "10px").style("right", RIGHT_OFFSET_BASE + "px")
 
       downloadButton.on("click", () => {
           const el = d3.select('#downloadButton')
@@ -569,17 +559,12 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     if (dataTable.hasSubtotals) {
       if (config.collapsedSubtotals || config.startFolded) {
          syncRowVisibility(true)
-         document.querySelectorAll('#reportTable tbody tr').forEach(rowEl => {
-             if (rowEl.classList.contains('collapsed')) {
-                 d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 9 12 15 18 9')
-             } else {
-                 d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 15 12 9 18 15')
-             }
-         })
+          document.querySelectorAll('#reportTable tbody tr').forEach(updateRowIcon)
       }
 
-      let rightOffsetExpand = config.exposeDownloadLink ? "47px" : "10px";
-      let rightOffsetCollapse = config.exposeDownloadLink ? "84px" : "47px";
+      const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
+      const rightOffsetExpand = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + step : RIGHT_OFFSET_BASE) + "px";
+      const rightOffsetCollapse = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + 2 * step : RIGHT_OFFSET_BASE + step) + "px";
 
       const expandAllBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => expandAllBtn.style(k, v))
@@ -588,7 +573,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           document.querySelectorAll('#reportTable tbody tr').forEach(rowEl => {
               if (rowEl.classList.contains('collapsed')) {
                   rowEl.classList.remove('collapsed')
-                  d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 15 12 9 18 15')
+                  updateRowIcon(rowEl)
               }
           })
           syncRowVisibility()
@@ -602,7 +587,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           document.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
               if (!rowEl.classList.contains('collapsed')) {
                   rowEl.classList.add('collapsed')
-                  d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', '6 9 12 15 18 9')
+                  updateRowIcon(rowEl)
               }
           })
           syncRowVisibility()
