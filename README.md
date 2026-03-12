@@ -2,7 +2,7 @@
 
 A table dedicated to single-page, enterprise summary reports. Useful for PDF exports, report packs, finance reporting, etc. Does not do multi-page tables and lists. Does look good for your year-on-year analysis. Originally created by [Jon Walls](https://github.com/ContrastingSounds/vis-report_table).
 
-![Example Report](docs/marketplace_image.png)
+![Example Report](assets/marketplace_image.png)
 
 - Quick variance calculations
 - Add subtotals (including column subtotals for tables with two levels of pivot)
@@ -25,31 +25,31 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 
 *Drag'n'drop columns for flat tables*
 
-![Drag'n'drop columns for flat tables](docs/report_table_01_drag_and_drop.gif)
+![Drag'n'drop columns for flat tables](assets/report_table_01_drag_and_drop.gif)
 
 *Tags in LookML for consistent headers and abbreviations*
 
-![Tags in LookML for consistent headers and abbreviations](docs/report_table_02_auto_headers_and_abbreviations.gif)
+![Tags in LookML for consistent headers and abbreviations](assets/report_table_02_auto_headers_and_abbreviations.gif)
 
 *Subtotals and "show last dimension only"*
 
-![Subtotals and last field only](docs/report_table_03_subtotals_and_last_field_only.gif)
+![Subtotals and last field only](assets/report_table_03_subtotals_and_last_field_only.gif)
 
 *Sort by Pivot or Measure*
 
-![Sort by Pivot or Measure](docs/report_table_04_sort_by_pivot_or_measure.gif)
+![Sort by Pivot or Measure](assets/report_table_04_sort_by_pivot_or_measure.gif)
 
 *Set headers and labels*
 
-![Set headers and labels](docs/report_table_05_change_headers.gif)
+![Set headers and labels](assets/report_table_05_change_headers.gif)
 
 *Even width columns or autolayout*
 
-![Even width columns or autolayout](docs/report_table_06_even_width_or_auto_layout.gif)
+![Even width columns or autolayout](assets/report_table_06_even_width_or_auto_layout.gif)
 
 *Transposing and PnL style reports*
 
-![Transposing and PnL style reports](docs/report_table_07_PnL_transpose_theme.gif)
+![Transposing and PnL style reports](assets/report_table_07_PnL_transpose_theme.gif)
 
 
 ## Tagging fields in LookML
@@ -81,7 +81,7 @@ The current tag settings available are `heading`, `short_name`, `unit`.
 
 You can also apply your own custom styling by supplying a URL to a CSS file in the `Load custom CSS from:` option and selecting `Use custom theme` in the `Theme` tab.
 
-![Theme selector](/docs/custom_theme.png)
+![Theme selector](/assets/custom_theme.png)
 
 In order to serve raw CSS files from your git provider, first pass the URL through [raw.githack.com](https://raw.githack.com/). Please use [this example template](/src/theme_custom_template.css) to help you get started with your customization. -->
 
