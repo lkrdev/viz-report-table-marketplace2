@@ -5,7 +5,7 @@ Great! Marketplace content -- including visualizations -- were designed for cont
 
 ## Extending the visualization
 ### Quickstart Dev Instructions
-1.  **Install Dependecies.**
+1.  **Install Dependencies.**
 
     Using yarn, install all dependencies
     ```
@@ -23,7 +23,7 @@ Great! Marketplace content -- including visualizations -- were designed for cont
      ```
     yarn watch
     ```
-    Your compiled code can be found in this repo.
+    Your compiled code will be generated in the `dist/` directory.
 
 ### Repository Structure
 
