@@ -563,6 +563,7 @@ class VisPluginTableModel {
       this.dimensions.push(newDimension)
 
       var column = new Column(newDimension.name, this, newDimension) 
+      column.isDimension = true
       column.idx = col_idx
       column.sort.push({name: 'section', value: 0})
       this.headers.forEach(header => {
@@ -869,6 +870,7 @@ class VisPluginTableModel {
     var dimension = this.dimensions[this.dimensions.length - 1]
     var dim_config_setting = this.config['hide|' + dimension.name]
     var column = new Column(INDEX_COLUMN, this, dimension)
+    column.isDimension = true
     column.sort.push({name: 'section', value: -1})
     column.hide = dim_config_setting === true ? dim_config_setting : false
 
@@ -1792,10 +1794,12 @@ class VisPluginTableModel {
 
   compareSortArrays (dataTable) {
     return function(a, b) {
+      var active = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts && dataTable.clientSorts.length > 0 ? dataTable.clientSorts : (dataTable.sorts || []))
       var depth = Math.max(a.sort.length, b.sort.length)
       for (var i = 0; i < depth; i++) {
-          var field = typeof a.sort[i].name !== 'undefined' ? a.sort[i].name : ''
-          var sort = dataTable.sorts.find(item => item.name === field)
+          var aSortItem = a.sort[i]
+          var field = (aSortItem && typeof aSortItem.name !== 'undefined') ? aSortItem.name : ''
+          var sort = field ? active.find(item => item.name === field) : undefined
           var desc = typeof sort !== 'undefined' ? sort.desc : false
 
           var a_value = typeof a.sort[i] !== 'undefined' ? a.sort[i].value : 0
@@ -1896,32 +1900,40 @@ class VisPluginTableModel {
     }
   }
 
+  getActiveSorts () {
+    return (this.clientSorts && this.clientSorts.length > 0) 
+      ? this.clientSorts 
+      : (this.sorts || []);
+  }
+
   clientSort (colId, shiftKey) {
-    if (!this.clientSorts) {
-      this.clientSorts = []
-    }
-
     var column = this.columns.find(c => c.id === colId)
-    if (!column) return
+    var pivot = this.pivot_fields.find(p => p.name === colId)
+    if (!column && !pivot) return
 
-    var defaultDesc = column.modelField.is_numeric ? true : false
+    var defaultDesc = column ? Boolean(column.modelField.is_numeric) : false
+    var active = this.getActiveSorts()
 
     if (!shiftKey) {
-      if (this.clientSorts.length === 1 && this.clientSorts[0].name === colId) {
-        this.clientSorts[0].desc = !this.clientSorts[0].desc
+      if (active.length === 1 && active[0].name === colId) {
+        this.clientSorts = [{ name: colId, desc: !active[0].desc }]
       } else {
-        this.clientSorts = [{ name: colId, desc: defaultDesc }]
+        var existing = active.find(s => s.name === colId)
+        this.clientSorts = [{ name: colId, desc: existing ? !existing.desc : defaultDesc }]
       }
     } else {
-      var existing = this.clientSorts.find(s => s.name === colId)
+      var current = active.map(s => ({ ...s }))
+      var existing = current.find(s => s.name === colId)
       if (existing) {
         existing.desc = !existing.desc
       } else {
-        this.clientSorts.push({ name: colId, desc: defaultDesc })
+        current.push({ name: colId, desc: defaultDesc })
       }
+      this.clientSorts = current
     }
 
     this.sortData()
+    this.sortColumns()
   }
 
   /**

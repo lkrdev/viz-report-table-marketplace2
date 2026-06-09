@@ -35,6 +35,41 @@ const loadStylesheet = function(link) {
 };
 
 
+export const getHeaderCellSortInfo = (d, dataTable) => {
+  if (!d) return { sortId: '', sortIndex: -1, sortObj: null, points: null };
+  const isPivotRow = d.type && d.type.startsWith('pivot');
+  const isTopLeftPivot = isPivotRow && d.modelField && Boolean(d.modelField.name);
+  const sortByMeasures = dataTable && dataTable.sortColsBy === 'measures';
+
+  let sortId = '';
+  if (isTopLeftPivot) {
+    sortId = d.modelField.name;
+  } else if (d.colspan === 1 && d.column) {
+    if (d.column.isDimension && d.type === 'field') {
+      sortId = d.column.id;
+    } else if (!d.column.isDimension && (sortByMeasures ? isPivotRow : !isPivotRow)) {
+      sortId = d.column.id;
+    }
+  }
+
+  const activeSorts = dataTable
+    ? (typeof dataTable.getActiveSorts === 'function'
+        ? dataTable.getActiveSorts()
+        : ((dataTable.clientSorts && dataTable.clientSorts.length > 0) ? dataTable.clientSorts : (dataTable.sorts || [])))
+    : [];
+  const sortIndex = sortId && activeSorts ? activeSorts.findIndex(s => s.name === sortId) : -1;
+  const sortObj = sortIndex !== -1 ? activeSorts[sortIndex] : null;
+
+  const points = sortObj 
+    ? (isTopLeftPivot 
+        ? (sortObj.desc ? "15 6 9 12 15 18" : "9 6 15 12 9 18") 
+        : (sortObj.desc ? "6 9 12 15 18 9" : "6 15 12 9 18 15")) 
+    : null;
+
+  return { sortId, sortIndex, sortObj, points };
+};
+
+
 const buildReportTable = function(config, dataTable, updateColumnOrder, updateConfig, element) {
   var dropTarget = null;
   const bounds = element.getBoundingClientRect()
@@ -42,9 +77,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   const chartCentreY = bounds.y + (bounds.height / 2);
 
   if (element._clientSorts) {
-    dataTable.clientSorts = element._clientSorts.filter(s => dataTable.columns.some(c => c.id === s.name));
+    dataTable.clientSorts = element._clientSorts.filter(s => 
+      dataTable.columns.some(c => c.id === s.name) ||
+      dataTable.pivot_fields.some(p => p.name === s.name)
+    );
     if (dataTable.clientSorts.length > 0) {
       dataTable.sortData();
+      dataTable.sortColumns();
     }
   }
 
@@ -194,8 +233,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     header_cells.append('th')
       .each(function(d) {
         const th = d3.select(this);
-        const hasSort = d.colspan === 1 && dataTable.clientSorts && dataTable.clientSorts.length > 0;
-        const sortIndex = hasSort ? dataTable.clientSorts.findIndex(s => s.name === d.column.id) : -1;
+        const { sortIndex, sortObj, points } = getHeaderCellSortInfo(d, dataTable);
 
         if (sortIndex !== -1) {
           const container = th.append('div')
@@ -205,9 +243,6 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
             .style('width', '100%');
 
           container.append('span').text(d.label);
-
-          const sortObj = dataTable.clientSorts[sortIndex];
-          const points = sortObj.desc ? "6 9 12 15 18 9" : "6 15 12 9 18 15";
 
           const svg = container.append('svg')
             .attr('class', 'sort-icon')
@@ -226,7 +261,8 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
 
           svg.append('polyline').attr('points', points);
 
-          if (dataTable.clientSorts.length > 1) {
+          const activeSorts = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts || []);
+          if (activeSorts.length > 1) {
             container.append('span')
               .attr('class', 'sort-num')
               .style('font-size', '75%')
@@ -248,7 +284,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       })
       .style('text-align', d => d.align)
       .style('font-size', config.headerFontSize + 'px')
-      .style('cursor', d => d.colspan === 1 ? 'pointer' : 'default')
+      .style('cursor', d => getHeaderCellSortInfo(d, dataTable).sortId ? 'pointer' : 'default')
       .style('user-select', 'none')
       .attr('draggable', true)
       .call(drag)
@@ -256,13 +292,14 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       .on('mouseout', () => dropTarget = null)
       .on('click', function(d) {
         if (d3.event && d3.event.defaultPrevented) return
-        if (d.colspan === 1) {
+        const { sortId } = getHeaderCellSortInfo(d, dataTable);
+        if (sortId) {
           if (d3.event) {
             d3.event.preventDefault()
             d3.event.stopPropagation()
           }
           var shiftKey = d3.event ? d3.event.shiftKey : false
-          dataTable.clientSort(d.column.id, shiftKey)
+          dataTable.clientSort(sortId, shiftKey)
           element._clientSorts = dataTable.clientSorts
           redraw()
         }
@@ -724,14 +761,12 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   redraw()
 }
 
+if (typeof looker === 'undefined') {
+  global.looker = { plugins: { visualizations: { add: () => {} } } };
+}
+
 looker.plugins.visualizations.add({
-  //Removes custom CSS theme for now over supportability concerns
-  options: (function() { 
-    let ops = VisPluginTableModel.getCoreConfigOptions();
-    ops.theme.values.pop()
-    delete ops.customTheme
-    return ops
-  })(),
+  options: VisPluginTableModel.getCoreConfigOptions(),
   
   create: function(element, config) {
     this.svgContainer = d3.select(element)

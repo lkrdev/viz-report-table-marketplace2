@@ -92,13 +92,99 @@ The current tag settings available are `heading`, `short_name`, `unit`.
   - The vis will use subtotals from the query response if available
   - The tooltip will alert users to "estimated" numbers
 
-<!-- ## Using Custom CSS 
+## Using Custom CSS 
 
-You can also apply your own custom styling by supplying a URL to a CSS file in the `Load custom CSS from:` option and selecting `Use custom theme` in the `Theme` tab.
+You can apply your own custom styling by supplying a URL to a CSS file in the `Load custom CSS from:` option and selecting `Use custom theme` in the `Theme` tab.
 
 ![Theme selector](/assets/custom_theme.png)
 
-In order to serve raw CSS files from your git provider, first pass the URL through [raw.githack.com](https://raw.githack.com/). Please use [this example template](/src/theme_custom_template.css) to help you get started with your customization. -->
+Please use [this example template](src/theme_custom_template.css) to help you get started with your customization.
+
+### Custom Styling Examples
+
+#### 1. High-Contrast Dark Mode
+```css
+/* Invert table styling for sleek, premium dark dashboards */
+.reportTable {
+  background-color: #1a1a1a;
+  color: #f5f5f5;
+  border: 1px solid #333333;
+}
+.reportTable th {
+  background-color: #242424;
+  color: #ffffff;
+  border-bottom: 2px solid #64b5f6 !important;
+}
+.reportTable td {
+  color: #e0e0e0;
+  border: 1px solid #2a2a2a;
+}
+.subtotal {
+  background: #2d2d2d;
+  color: #81c784;
+}
+/* Style the hover tooltip/popover for dark mode */
+#tooltip {
+  background-color: #242424;
+  border: 1px solid #444444;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+#tooltip p {
+  color: #f5f5f5;
+}
+```
+
+#### 2. Corporate Card Premium Layout
+```css
+/* Remove harsh borders and introduce subtle drop shadows and professional gradient headers */
+.reportTable {
+  font-family: 'Inter', Roboto, sans-serif;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.reportTable th {
+  background: linear-gradient(90deg, #1A365D 0%, #2B6CB0 100%);
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+/* Premium modern tooltip/popover styling */
+#tooltip {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  padding: 8px 12px;
+}
+#tooltip p {
+  color: #1a202c;
+  font-weight: 500;
+}
+```
+
+### Hosting Your Custom CSS Simple & Free
+
+To load external CSS into Looker, the stylesheet must be served over HTTPS with permissive **CORS** (`Access-Control-Allow-Origin: *`) and a `Content-Type: text/css` header. 
+
+> [!WARNING]
+> **Raw GitHub/Gist Links Will Fail**: Direct links like `https://gist.githubusercontent.com/...` fail because GitHub enforces `X-Content-Type-Options: nosniff` with a `text/plain` MIME type. You **must** pass the link through a proxy like Githack or jsDelivr.
+
+Here are the most reliable ways to host your CSS instantly:
+
+1. **Githack ([raw.githack.com](https://raw.githack.com/)) for GitHub & Gists**
+   * **For a Gist**: Create a free [GitHub Gist](https://gist.github.com/) with your `.css` file. Copy the raw URL (`https://gist.githubusercontent.com/...`) and paste it into [raw.githack.com](https://raw.githack.com/) (which converts it to `gist.githack.com/...`).
+   * **For a GitHub Repo**: Commit your `.css` file to any public GitHub repository. Copy its raw URL (`https://raw.githubusercontent.com/...`) and paste it into [raw.githack.com](https://raw.githack.com/) (which converts it to `raw.githack.com/...`).
+
+2. **Google Cloud Storage (Enterprise Standard)**
+   * Upload your stylesheet to a public GCS bucket.
+   * Ensure `allUsers` has `Storage Object Viewer` access and configure your bucket's CORS policy to allow `*` origins. Link via `https://storage.googleapis.com/YOUR_BUCKET/theme.css`.
+
 
 
 ## What if I find an error? Suggestions for improvements?
