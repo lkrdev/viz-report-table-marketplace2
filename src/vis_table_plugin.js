@@ -1826,6 +1826,10 @@ class VisPluginTableModel {
   }
 
   compareRows (dataTable) {
+    const monthOrder = {
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+      'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+    }
     return function(a, b) {
       var sectionA = a.sort && a.sort.find(s => s.name === 'section') ? a.sort.find(s => s.name === 'section').value : 0
       var sectionB = b.sort && b.sort.find(s => s.name === 'section') ? b.sort.find(s => s.name === 'section').value : 0
@@ -1866,10 +1870,6 @@ class VisPluginTableModel {
 
           if (valA !== valB) {
             if (sortObj.name && sortObj.name.endsWith('_month_name')) {
-              const monthOrder = {
-                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-                'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
-              }
               var m1 = monthOrder[String(valA).trim().toLowerCase().substring(0, 3)] ?? 999
               var m2 = monthOrder[String(valB).trim().toLowerCase().substring(0, 3)] ?? 999
               if (m1 !== m2) {
