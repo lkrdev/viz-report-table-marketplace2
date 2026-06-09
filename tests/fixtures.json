@@ -1,0 +1,1094 @@
+{
+  "group_name": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.created_month` DESC\n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 5343
+          },
+          "Gemini Default Users": {
+            "value": 5257
+          },
+          "Gemini in Looker": {
+            "value": 4788
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 13567
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11940
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11128
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      }
+    ]
+  },
+  "group_name_desc": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.created_month` DESC\n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "Gemini in Looker": {
+            "value": 4788
+          },
+          "Gemini Default Users": {
+            "value": 5257
+          },
+          "All Users": {
+            "value": 5343
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "All Users": {
+            "value": 13567
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "All Users": {
+            "value": 11940
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "All Users": {
+            "value": 11128
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      }
+    ]
+  },
+  "history_created_month": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.created_month` \n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11128
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11940
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 13567
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 5345
+          },
+          "Gemini Default Users": {
+            "value": 5259
+          },
+          "Gemini in Looker": {
+            "value": 4790
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      }
+    ]
+  },
+  "history_created_month_desc": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.created_month` DESC\n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 5343
+          },
+          "Gemini Default Users": {
+            "value": 5257
+          },
+          "Gemini in Looker": {
+            "value": 4788
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 13567
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11940
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11128
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      }
+    ]
+  },
+  "history_count_desc_0": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.count` DESC\n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 13567
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11940
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11128
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 5347
+          },
+          "Gemini Default Users": {
+            "value": 5261
+          },
+          "Gemini in Looker": {
+            "value": 4792
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      }
+    ]
+  },
+  "group_name_history_count_desc_1_history_created_month_desc": {
+    "metadata": {
+      "big_query_metadata": null,
+      "fields": {
+        "dimensions": [
+          {
+            "sql": "{% if _dialect._name contains 'mysql' %}\n            CONVERT(${TABLE}.CREATED_AT USING utf8mb4)\n          {% else %}\n            ${TABLE}.CREATED_AT\n          {% endif %} ",
+            "view": "history",
+            "dimension_group": "history.created",
+            "category": "dimension",
+            "field_group_label": "Created Date",
+            "name": "history.created_month",
+            "type": "date_month",
+            "view_label": "History",
+            "label": "History Created Month",
+            "field_group_variant": "Month",
+            "hidden": false,
+            "description": "When an event in 'History' was created. Each event is linked to a query in Looker."
+          }
+        ],
+        "measures": [
+          {
+            "sql": null,
+            "view": "history",
+            "dimension_group": null,
+            "category": "measure",
+            "field_group_label": null,
+            "name": "history.count",
+            "type": "count",
+            "view_label": "History",
+            "label": "History Count",
+            "field_group_variant": "Count",
+            "hidden": false,
+            "description": "This is a simple count of the primary key of the history table."
+          }
+        ],
+        "pivots": [
+          {
+            "sql": "`group`.name",
+            "view": "group",
+            "dimension_group": null,
+            "category": "dimension",
+            "field_group_label": null,
+            "name": "group.name",
+            "type": "string",
+            "view_label": "Group",
+            "label": "Group Name",
+            "field_group_variant": "Name",
+            "hidden": false,
+            "description": "The group name"
+          }
+        ],
+        "table_calculations": []
+      },
+      "pivots": [
+        {
+          "key": "All Users",
+          "data": {
+            "group.name": "All Users"
+          },
+          "sort_values": {
+            "group.name": "All Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini Default Users",
+          "data": {
+            "group.name": "Gemini Default Users"
+          },
+          "sort_values": {
+            "group.name": "Gemini Default Users"
+          },
+          "is_total": false
+        },
+        {
+          "key": "Gemini in Looker",
+          "data": {
+            "group.name": "Gemini in Looker"
+          },
+          "sort_values": {
+            "group.name": "Gemini in Looker"
+          },
+          "is_total": false
+        },
+        {
+          "key": "group.name___null",
+          "data": {
+            "group.name": null
+          },
+          "sort_values": {
+            "group.name": null
+          },
+          "is_total": false
+        }
+      ],
+      "filters": {},
+      "filter_expression": null,
+      "columns_truncated": false,
+      "has_totals": false,
+      "has_subtotals": false,
+      "sql": "        SELECT zz1.* FROM (\n        SELECT\n           @min_rank := IF(!_ct2, _rank, @min_rank) as m_rank\n           , zz.*\n        FROM (\n        SELECT\n           (@curType1 IS NOT NULL AND @curType1 = CAST(COALESCE(`history.created_month`,'') AS CHAR)) as _ct2\n          , @curType1 := CAST(COALESCE(`history.created_month`,'') AS CHAR) as _ct1\n          , xx.*\n        FROM (\n            SELECT * FROM (\n               SELECT\n                     (\n                        CASE CAST(COALESCE(`group.name`,'') AS CHAR)\n                        WHEN @curType\n                        THEN @curRow := @curRow + 1\n                        ELSE @curRow := 1 AND @curType := CAST(COALESCE(`group.name`,'') AS CHAR) END\n                      ) AS _rank,\n                      ww.*\n               FROM (\nSELECT\n    `group`.name AS `group.name`,\n        (DATE_FORMAT(\n            CONVERT(history.CREATED_AT USING utf8mb4)\n           ,'%Y-%m')) AS `history.created_month`,\n    COUNT(DISTINCT history.id) AS `history.count`\nFROM history\nLEFT JOIN user  AS user ON history.user_id = user.id\nLEFT JOIN group_user ON user.id = group_user.user_id\nLEFT JOIN  `group`   AS `group` ON `group`.id = group_user.group_id\nGROUP BY\n    1,\n    2        ) as ww\n        , (SELECT @min_rank := 1000000, @curType1 := NULL, @curRow :=0, @curType := '') r \nORDER BY `group.name`, `history.count` DESC,`history.created_month` DESC\n        ) xx1\n        ORDER BY `history.created_month`, _rank\n        ) as xx\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz\n        ORDER BY `history.created_month`, _rank, _ct2\n        ) as zz1\nWHERE m_rank <= 100 LIMIT 30000"
+    },
+    "rows": [
+      {
+        "history.created_month": {
+          "value": "2026-05"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 13567
+          },
+          "Gemini Default Users": {
+            "value": 13567
+          },
+          "Gemini in Looker": {
+            "value": 10299
+          },
+          "group.name___null": {
+            "value": 34824
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-04"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11940
+          },
+          "Gemini Default Users": {
+            "value": 11940
+          },
+          "Gemini in Looker": {
+            "value": 9486
+          },
+          "group.name___null": {
+            "value": 33649
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-03"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 11128
+          },
+          "Gemini Default Users": {
+            "value": 11128
+          },
+          "Gemini in Looker": {
+            "value": 8744
+          },
+          "group.name___null": {
+            "value": 23392
+          }
+        }
+      },
+      {
+        "history.created_month": {
+          "value": "2026-06"
+        },
+        "history.count": {
+          "All Users": {
+            "value": 5348
+          },
+          "Gemini Default Users": {
+            "value": 5262
+          },
+          "Gemini in Looker": {
+            "value": 4793
+          },
+          "group.name___null": {
+            "value": 9812
+          }
+        }
+      }
+    ]
+  }
+}

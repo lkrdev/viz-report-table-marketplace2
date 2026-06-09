@@ -4,3 +4,4 @@ node_modules/
 compile
 docs/testing.md
 dist/
+tmp

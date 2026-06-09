@@ -19,22 +19,31 @@
 
 }
 
-#tooltip.hidden {
-    display: none;
-
-  /* Add customization here  */
-
+.hidden {
+    display: none !important;
 }
 
-#tooltip p {
-    margin: 0;
-    font-family: sans-serif;
-    font-size: 12px;
-    line-height: 15px;
+.hover {
+    background-color: #ffffbb;
 
     /* Add customization here  */
 
+}
 
+.tooltipTable {
+    font-family: Open Sans, Helvetica, Arial, sans-serif;
+    border: 0px;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+.tooltipTable td {
+    border: 0px !important;
+    padding: 2px 6px;
+}
+
+.focus {
+    font-weight: bold;
 }
 
 .reportTable {

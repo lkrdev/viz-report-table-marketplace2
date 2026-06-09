@@ -7,7 +7,9 @@
   "author": "Jon Walls <8075115+ContrastingSounds@users.noreply.github.com>",
   "license": "MIT",
   "devDependencies": {
+    "@babel/preset-env": "^7.29.7",
     "css-loader": "^6.8.1",
+    "jest": "^30.4.2",
     "style-loader": "^1.2.1",
     "url-loader": "^4.1.0",
     "webpack": "^5.67.0",
@@ -25,8 +27,16 @@
     "uuid": "^11.1.1"
   },
   "scripts": {
+    "test": "jest",
     "build": "webpack",
     "watch": "webpack  --watch --progress",
     "dev": "webpack serve --server-type https --hot --mode development"
+  },
+  "jest": {
+    "modulePathIgnorePatterns": ["<rootDir>/tmp"],
+    "transformIgnorePatterns": ["/node_modules/(?!d3)"],
+    "moduleNameMapper": {
+      "\\.css$": "<rootDir>/tests/styleMock.js"
+    }
   }
 }
