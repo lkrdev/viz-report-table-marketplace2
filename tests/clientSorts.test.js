@@ -119,5 +119,39 @@ describe('clientSorts across multiple iterations', () => {
       expect(info.sortId).toBe('history.created_month');
       expect(info.points).toBe("6 15 12 9 18 15"); // Up arrow (ascending)
     });
+
+    it('defensively handles null or undefined input in getHeaderCellSortInfo', () => {
+      expect(getHeaderCellSortInfo(null, null)).toEqual({
+        sortId: '',
+        sortIndex: -1,
+        sortObj: null,
+        points: null
+      });
+      expect(getHeaderCellSortInfo(undefined, null)).toEqual({
+        sortId: '',
+        sortIndex: -1,
+        sortObj: null,
+        points: null
+      });
+    });
+  });
+
+  it('avoids mutating underlying sort objects during multi-column shift sorting', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.group_name);
+    metadata.sorts = [{ name: 'group.name', desc: false }];
+    const model = new VisPluginTableModel(rows, metadata, {});
+
+    model.clientSort('group.name', true);
+    expect(model.clientSorts).toEqual([{ name: 'group.name', desc: true }]);
+    expect(metadata.sorts[0].desc).toBe(false);
+  });
+
+  it('safely handles uneven sort depth without throwing TypeError in compareSortArrays', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.group_name);
+    const model = new VisPluginTableModel(rows, metadata, {});
+    const comparator = model.compareSortArrays(model);
+    const a = { sort: [{ name: 'group.name', value: 1 }] };
+    const b = { sort: [{ name: 'group.name', value: 2 }, { name: 'other', value: 3 }] };
+    expect(() => comparator(a, b)).not.toThrow();
   });
 });

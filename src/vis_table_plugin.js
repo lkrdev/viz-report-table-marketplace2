@@ -1794,11 +1794,12 @@ class VisPluginTableModel {
 
   compareSortArrays (dataTable) {
     return function(a, b) {
+      var active = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts && dataTable.clientSorts.length > 0 ? dataTable.clientSorts : (dataTable.sorts || []))
       var depth = Math.max(a.sort.length, b.sort.length)
       for (var i = 0; i < depth; i++) {
-          var field = typeof a.sort[i].name !== 'undefined' ? a.sort[i].name : ''
-          var active = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts && dataTable.clientSorts.length > 0 ? dataTable.clientSorts : (dataTable.sorts || []))
-          var sort = active.find(item => item.name === field)
+          var aSortItem = a.sort[i]
+          var field = (aSortItem && typeof aSortItem.name !== 'undefined') ? aSortItem.name : ''
+          var sort = field ? active.find(item => item.name === field) : undefined
           var desc = typeof sort !== 'undefined' ? sort.desc : false
 
           var a_value = typeof a.sort[i] !== 'undefined' ? a.sort[i].value : 0
@@ -1921,7 +1922,7 @@ class VisPluginTableModel {
         this.clientSorts = [{ name: colId, desc: existing ? !existing.desc : defaultDesc }]
       }
     } else {
-      var current = [].concat(active)
+      var current = active.map(s => ({ ...s }))
       var existing = current.find(s => s.name === colId)
       if (existing) {
         existing.desc = !existing.desc

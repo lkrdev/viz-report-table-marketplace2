@@ -36,6 +36,7 @@ const loadStylesheet = function(link) {
 
 
 export const getHeaderCellSortInfo = (d, dataTable) => {
+  if (!d) return { sortId: '', sortIndex: -1, sortObj: null, points: null };
   const isPivotRow = d.type && d.type.startsWith('pivot');
   const isTopLeftPivot = isPivotRow && d.modelField && Boolean(d.modelField.name);
   const sortByMeasures = dataTable && dataTable.sortColsBy === 'measures';
@@ -51,7 +52,11 @@ export const getHeaderCellSortInfo = (d, dataTable) => {
     }
   }
 
-  const activeSorts = dataTable && dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable && dataTable.clientSorts && dataTable.clientSorts.length > 0 ? dataTable.clientSorts : (dataTable ? dataTable.sorts || [] : []));
+  const activeSorts = dataTable
+    ? (typeof dataTable.getActiveSorts === 'function'
+        ? dataTable.getActiveSorts()
+        : ((dataTable.clientSorts && dataTable.clientSorts.length > 0) ? dataTable.clientSorts : (dataTable.sorts || [])))
+    : [];
   const sortIndex = sortId && activeSorts ? activeSorts.findIndex(s => s.name === sortId) : -1;
   const sortObj = sortIndex !== -1 ? activeSorts[sortIndex] : null;
 
