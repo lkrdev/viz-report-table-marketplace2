@@ -41,6 +41,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   const chartCentreX = bounds.x + (bounds.width / 2);
   const chartCentreY = bounds.y + (bounds.height / 2);
 
+  if (element._clientSorts) {
+    dataTable.clientSorts = element._clientSorts;
+    dataTable.sortData();
+  }
+
   removeStyles().then(() => {
     if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
       loadStylesheet(config.customTheme)
@@ -82,7 +87,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   }
 
 
-  const renderTable = async function() {
+  const redraw = function() {
+    d3.select('#visContainer').html('')
+    if (document.getElementById('visSvg')) {
+      d3.select('#visSvg').html('')
+    }
+
+    const renderTable = async function() {
     const getTextWidth = function(text, font = '') {
       // re-use canvas object for better performance
       var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement('canvas'));
@@ -185,7 +196,28 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         .enter()    
 
     header_cells.append('th')
-      .text(d => d.label)
+      .html(d => {
+        var labelHtml = `<span>${d.label}</span>`
+        if (d.colspan !== 1 || !dataTable.clientSorts || dataTable.clientSorts.length === 0) {
+          return labelHtml
+        }
+
+        var sortIndex = dataTable.clientSorts.findIndex(s => s.name === d.column.id)
+        if (sortIndex === -1) {
+          return labelHtml
+        }
+
+        var sortObj = dataTable.clientSorts[sortIndex]
+        var points = sortObj.desc ? "6 9 12 15 18 9" : "6 15 12 9 18 15"
+        var sortSvg = `<svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: middle; display: inline-block; flex-shrink: 0;"><polyline points="${points}"></polyline></svg>`
+        
+        var numHtml = ""
+        if (dataTable.clientSorts.length > 1) {
+          numHtml = `<span class="sort-num" style="font-size: 75%; margin-left: 2px; opacity: 0.8;">${sortIndex + 1}</span>`
+        }
+
+        return `<div style="display: inline-flex; align-items: center; justify-content: ${d.align === 'right' ? 'flex-end' : d.align === 'center' ? 'center' : 'flex-start'}; width: 100%;">${labelHtml}${sortSvg}${numHtml}</div>`
+      })
       .attr('id', d => d.id)
       .attr('colspan', d => d.colspan)
       .attr('rowspan', d => d.rowspan)
@@ -196,10 +228,25 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       })
       .style('text-align', d => d.align)
       .style('font-size', config.headerFontSize + 'px')
+      .style('cursor', d => d.colspan === 1 ? 'pointer' : 'default')
+      .style('user-select', 'none')
       .attr('draggable', true)
       .call(drag)
       .on('mouseover', cell => dropTarget = cell)
       .on('mouseout', () => dropTarget = null)
+      .on('click', function(d) {
+        if (d3.event && d3.event.defaultPrevented) return
+        if (d.colspan === 1) {
+          if (d3.event) {
+            d3.event.preventDefault()
+            d3.event.stopPropagation()
+          }
+          var shiftKey = d3.event ? d3.event.shiftKey : false
+          dataTable.clientSort(d.column.id, shiftKey)
+          element._clientSorts = dataTable.clientSorts
+          redraw()
+        }
+      })
 
     var table_rows = table.append('tbody')
       .selectAll('tr')
@@ -646,7 +693,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       document.getElementById('reportTable').style.opacity = 1
     }
   })
+  }
 
+  redraw()
 }
 
 looker.plugins.visualizations.add({

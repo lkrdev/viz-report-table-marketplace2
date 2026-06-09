@@ -283,6 +283,7 @@ class VisPluginTableModel {
     this.showHighlight = config.showHighlight || false
     this.genericLabelForSubtotals = config.genericLabelForSubtotals || false
 
+    this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
     this.hasTotals = typeof queryResponse.totals_data !== 'undefined' ? true : false
     this.calculateOthers = typeof queryResponse.truncated !== 'undefined' ? queryResponse.truncated && config.calculateOthers : false 
@@ -314,6 +315,7 @@ class VisPluginTableModel {
     if (this.variances) { this.addVarianceColumns() }
 
     // this.addColumnSeries()    // TODO: add column series for generated columns (eg column subtotals)
+    this.sortData()
     this.sortColumns()
     this.columns.forEach(column => column.setHeaderCellLabels())
     if (this.spanCols) { this.setColSpans() }
@@ -1819,8 +1821,107 @@ class VisPluginTableModel {
    * 3. Row Value (currently based only on original row index from the Looker data object)
    */
   sortData () {
-    this.data.sort(this.compareSortArrays(this))
+    this.data.sort(this.compareRows(this))
     if (this.spanRows) { this.setRowSpans() }
+  }
+
+  compareRows (dataTable) {
+    return function(a, b) {
+      var sectionA = a.sort && a.sort.find(s => s.name === 'section') ? a.sort.find(s => s.name === 'section').value : 0
+      var sectionB = b.sort && b.sort.find(s => s.name === 'section') ? b.sort.find(s => s.name === 'section').value : 0
+      if (sectionA !== sectionB) {
+        return sectionA - sectionB
+      }
+
+      var subProps = a.sort ? a.sort.filter(s => s.name && s.name.startsWith('subtotal')) : []
+      for (var k = 0; k < subProps.length; k++) {
+        var pName = subProps[k].name
+        var subA = a.sort.find(s => s.name === pName) ? a.sort.find(s => s.name === pName).value : 0
+        var subB = b.sort && b.sort.find(s => s.name === pName) ? b.sort.find(s => s.name === pName).value : 0
+        if (subA !== subB) {
+          return subA - subB
+        }
+      }
+
+      if (a.type !== 'line_item' || b.type !== 'line_item') {
+        var origA = a.sort && a.sort.find(s => s.name === 'original_row') ? a.sort.find(s => s.name === 'original_row').value : 0
+        var origB = b.sort && b.sort.find(s => s.name === 'original_row') ? b.sort.find(s => s.name === 'original_row').value : 0
+        return origA - origB
+      }
+
+      if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
+        for (var c = 0; c < dataTable.clientSorts.length; c++) {
+          var sortObj = dataTable.clientSorts[c]
+          var cellA = a.data[sortObj.name]
+          var cellB = b.data[sortObj.name]
+
+          var valA = cellA ? (cellA.sort_value !== undefined ? cellA.sort_value : (cellA.value && cellA.value.sort_value !== undefined ? cellA.value.sort_value : cellA.value)) : null
+          var valB = cellB ? (cellB.sort_value !== undefined ? cellB.sort_value : (cellB.value && cellB.value.sort_value !== undefined ? cellB.value.sort_value : cellB.value)) : null
+
+          if (valA === null || valA === undefined) valA = ''
+          if (valB === null || valB === undefined) valB = ''
+
+          if (valA === '' && valB !== '') return 1
+          if (valA !== '' && valB === '') return -1
+
+          if (valA !== valB) {
+            if (sortObj.name && sortObj.name.endsWith('_month_name')) {
+              const monthOrder = {
+                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+              }
+              var m1 = monthOrder[String(valA).trim().toLowerCase().substring(0, 3)] ?? 999
+              var m2 = monthOrder[String(valB).trim().toLowerCase().substring(0, 3)] ?? 999
+              if (m1 !== m2) {
+                return sortObj.desc ? m2 - m1 : m1 - m2
+              }
+            }
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+              var cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
+              if (cmp !== 0) {
+                return sortObj.desc ? -cmp : cmp
+              }
+            } else {
+              if (valA < valB) return sortObj.desc ? 1 : -1
+              if (valA > valB) return sortObj.desc ? -1 : 1
+            }
+          }
+        }
+      }
+
+      var origA = a.sort && a.sort.find(s => s.name === 'original_row') ? a.sort.find(s => s.name === 'original_row').value : 0
+      var origB = b.sort && b.sort.find(s => s.name === 'original_row') ? b.sort.find(s => s.name === 'original_row').value : 0
+      return origA - origB
+    }
+  }
+
+  clientSort (colId, shiftKey) {
+    if (!this.clientSorts) {
+      this.clientSorts = []
+    }
+
+    var column = this.columns.find(c => c.id === colId)
+    if (!column) return
+
+    var defaultDesc = column.modelField.is_numeric ? true : false
+
+    if (!shiftKey) {
+      if (this.clientSorts.length === 1 && this.clientSorts[0].name === colId) {
+        this.clientSorts[0].desc = !this.clientSorts[0].desc
+      } else {
+        this.clientSorts = [{ name: colId, desc: defaultDesc }]
+      }
+    } else {
+      var existing = this.clientSorts.find(s => s.name === colId)
+      if (existing) {
+        existing.desc = !existing.desc
+      } else {
+        this.clientSorts.push({ name: colId, desc: defaultDesc })
+      }
+    }
+
+    this.sortData()
   }
 
   /**
