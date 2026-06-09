@@ -21,6 +21,21 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 - Drill-to-detail 
 
 
+## Installation
+
+To install this visualization in your Looker instance, add the following `visualization` parameter to your project's `manifest.lkml` file:
+
+```lookml
+visualization: {
+  id: "lkrdev-report-table"
+  url: "https://cdn.lkr.dev/viz/report-table/latest/report_table.js"
+  label: "Report Table"
+}
+```
+
+For more details on installing custom visualizations in a project with `manifest.lkml` or globally via the Admin panel, refer to the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/developing-custom-visualizations) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-visualizations).
+
+
 ## Examples
 
 *Drag'n'drop columns for flat tables*

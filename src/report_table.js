@@ -41,6 +41,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   const chartCentreX = bounds.x + (bounds.width / 2);
   const chartCentreY = bounds.y + (bounds.height / 2);
 
+  if (element._clientSorts) {
+    dataTable.clientSorts = element._clientSorts.filter(s => dataTable.columns.some(c => c.id === s.name));
+    if (dataTable.clientSorts.length > 0) {
+      dataTable.sortData();
+    }
+  }
+
   removeStyles().then(() => {
     if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
       loadStylesheet(config.customTheme)
@@ -185,7 +192,52 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         .enter()    
 
     header_cells.append('th')
-      .text(d => d.label)
+      .each(function(d) {
+        const th = d3.select(this);
+        const hasSort = d.colspan === 1 && dataTable.clientSorts && dataTable.clientSorts.length > 0;
+        const sortIndex = hasSort ? dataTable.clientSorts.findIndex(s => s.name === d.column.id) : -1;
+
+        if (sortIndex !== -1) {
+          const container = th.append('div')
+            .style('display', 'inline-flex')
+            .style('align-items', 'center')
+            .style('justify-content', d.align === 'right' ? 'flex-end' : d.align === 'center' ? 'center' : 'flex-start')
+            .style('width', '100%');
+
+          container.append('span').text(d.label);
+
+          const sortObj = dataTable.clientSorts[sortIndex];
+          const points = sortObj.desc ? "6 9 12 15 18 9" : "6 15 12 9 18 15";
+
+          const svg = container.append('svg')
+            .attr('class', 'sort-icon')
+            .attr('width', 12)
+            .attr('height', 12)
+            .attr('viewBox', '0 0 24 24')
+            .style('fill', 'none')
+            .style('stroke', 'currentColor')
+            .style('stroke-width', 2)
+            .style('stroke-linecap', 'round')
+            .style('stroke-linejoin', 'round')
+            .style('margin-left', '4px')
+            .style('vertical-align', 'middle')
+            .style('display', 'inline-block')
+            .style('flex-shrink', 0);
+
+          svg.append('polyline').attr('points', points);
+
+          if (dataTable.clientSorts.length > 1) {
+            container.append('span')
+              .attr('class', 'sort-num')
+              .style('font-size', '75%')
+              .style('margin-left', '2px')
+              .style('opacity', 0.8)
+              .text(sortIndex + 1);
+          }
+        } else {
+          th.append('span').text(d.label);
+        }
+      })
       .attr('id', d => d.id)
       .attr('colspan', d => d.colspan)
       .attr('rowspan', d => d.rowspan)
@@ -196,10 +248,25 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       })
       .style('text-align', d => d.align)
       .style('font-size', config.headerFontSize + 'px')
+      .style('cursor', d => d.colspan === 1 ? 'pointer' : 'default')
+      .style('user-select', 'none')
       .attr('draggable', true)
       .call(drag)
       .on('mouseover', cell => dropTarget = cell)
       .on('mouseout', () => dropTarget = null)
+      .on('click', function(d) {
+        if (d3.event && d3.event.defaultPrevented) return
+        if (d.colspan === 1) {
+          if (d3.event) {
+            d3.event.preventDefault()
+            d3.event.stopPropagation()
+          }
+          var shiftKey = d3.event ? d3.event.shiftKey : false
+          dataTable.clientSort(d.column.id, shiftKey)
+          element._clientSorts = dataTable.clientSorts
+          redraw()
+        }
+      })
 
     var table_rows = table.append('tbody')
       .selectAll('tr')
@@ -499,7 +566,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         )
   }
 
-  renderTable().then(() => {
+  const redraw = function() {
+    d3.select('#visContainer').html('')
+    if (document.getElementById('visSvg')) {
+      d3.select('#visSvg').html('')
+    }
+
+    renderTable().then(() => {
     document.getElementById('reportTable').classList.add('reveal')
 
     const baseActionBtnStyle = {
@@ -646,7 +719,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       document.getElementById('reportTable').style.opacity = 1
     }
   })
+  }
 
+  redraw()
 }
 
 looker.plugins.visualizations.add({
