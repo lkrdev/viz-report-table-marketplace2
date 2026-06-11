@@ -2,24 +2,25 @@ import { VisPluginTableModel } from '../src/vis_table_plugin';
 const fixtures = require('./fixtures.json');
 
 const parseJsonBi = (fixture, defaultSorts = []) => {
+  const clonedFixture = JSON.parse(JSON.stringify(fixture));
   const metadata = {
-    ...fixture.metadata,
+    ...clonedFixture.metadata,
     fields: {
-      ...fixture.metadata.fields,
-      dimension_like: fixture.metadata.fields.dimensions || [],
+      ...clonedFixture.metadata.fields,
+      dimension_like: clonedFixture.metadata.fields.dimensions || [],
       measure_like: [
-        ...(fixture.metadata.fields.measures || []),
-        ...(fixture.metadata.fields.table_calculations || [])
+        ...(clonedFixture.metadata.fields.measures || []),
+        ...(clonedFixture.metadata.fields.table_calculations || [])
       ],
-      pivots: fixture.metadata.fields.pivots || []
+      pivots: clonedFixture.metadata.fields.pivots || []
     },
-    pivots: (fixture.metadata.pivots || []).map(p => ({
+    pivots: (clonedFixture.metadata.pivots || []).map(p => ({
       ...p,
       metadata: p.metadata || Object.fromEntries(
         Object.entries(p.data || {}).map(([k, v]) => [k, typeof v === 'object' && v !== null ? v : { value: v }])
       )
     })),
-    sorts: (fixture.metadata.sorts || fixture.sorts || defaultSorts).map(s => {
+    sorts: (clonedFixture.metadata.sorts || clonedFixture.sorts || defaultSorts).map(s => {
       if (typeof s === 'object' && s !== null) return s;
       const parts = String(s).trim().split(/\s+/);
       return {
@@ -28,7 +29,7 @@ const parseJsonBi = (fixture, defaultSorts = []) => {
       };
     })
   };
-  return { rows: fixture.rows, metadata };
+  return { rows: clonedFixture.rows, metadata };
 };
 
 describe('Dynamic label and config option handling', () => {
