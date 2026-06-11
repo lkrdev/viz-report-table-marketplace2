@@ -350,7 +350,8 @@ class VisPluginTableModel {
         section: 'Dimensions',
         type: 'string',
         label: dimension.label,
-        default: dimension.label,
+        default: '',
+        placeholder: dimension.label,
         order: i * 10 + 1,
       }
 
@@ -394,7 +395,8 @@ class VisPluginTableModel {
         section: 'Measures',
         type: 'string',
         label: measure.label,
-        default: measure.label,
+        default: '',
+        placeholder: measure.label,
         order: 100 + i * 10 + 1,
       }
 
