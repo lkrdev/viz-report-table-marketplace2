@@ -4,6 +4,8 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 
 ![Example Report](assets/marketplace_image.png)
 
+## Features
+
 - Quick variance calculations
 - Add subtotals (including column subtotals for tables with two levels of pivot)
 
@@ -19,6 +21,11 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 - Use LookML tags to give default abbreviations to popular fields
 - Reduce to a single dimension value for financial-style reporting
 - Drill-to-detail 
+
+## Recent Updates
+
+- Added an option to freeze the first X columns during horizontal scrolling (fully compatible with transposed tables).
+- Added support for dynamic field labels in Looker (such as LookML's `label_from_parameter` or Liquid conditional logic).
 
 
 ## Installation
