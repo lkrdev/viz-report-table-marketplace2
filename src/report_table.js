@@ -149,9 +149,14 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         });
 
         const trs = document.querySelectorAll('#reportTable tr');
-        const rowSpans = {};
+        const containerLeft = visContainer.getBoundingClientRect().left;
+        const scrollLeft = visContainer.scrollLeft;
+        const colLefts = {};
+        let rowSpans = {};
 
+        // Pass 1: Read column left offsets without dirtying the DOM to avoid layout thrashing
         trs.forEach(tr => {
+          if (tr.style.display === 'none') return;
           let c = 0;
           Array.from(tr.children).forEach(cell => {
             while (rowSpans[c] > 0) {
@@ -168,18 +173,46 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
               }
             }
 
-            if (c < numColsToFreeze && tr.style.display !== 'none') {
-              const left = cell.getBoundingClientRect().left - visContainer.getBoundingClientRect().left + visContainer.scrollLeft;
-              cell.style.left = left + 'px';
-              cell.classList.add('sticky-col');
+            if (c < numColsToFreeze && colLefts[c] === undefined) {
+              colLefts[c] = cell.getBoundingClientRect().left - containerLeft + scrollLeft;
             }
 
             c += colSpan;
           });
         });
 
-        document.querySelectorAll('#reportTable .sticky-col').forEach(el => {
-          el.style.position = 'sticky';
+        // Reset rowSpans for Pass 2
+        rowSpans = {};
+
+        // Pass 2: Write styles and classes in a single batch
+        trs.forEach(tr => {
+          if (tr.style.display === 'none') return;
+          let c = 0;
+          Array.from(tr.children).forEach(cell => {
+            while (rowSpans[c] > 0) {
+              rowSpans[c]--;
+              c++;
+            }
+
+            const colSpan = cell.colSpan || 1;
+            const rowSpan = cell.rowSpan || 1;
+
+            if (rowSpan > 1) {
+              for (let s = 0; s < colSpan; s++) {
+                rowSpans[c + s] = rowSpan - 1;
+              }
+            }
+
+            if (c < numColsToFreeze) {
+              const left = colLefts[c];
+              if (left !== undefined) {
+                cell.style.left = left + 'px';
+                cell.classList.add('sticky-col');
+              }
+            }
+
+            c += colSpan;
+          });
         });
 
         let stickyStyle = document.getElementById('reportTableStickyStyle');
