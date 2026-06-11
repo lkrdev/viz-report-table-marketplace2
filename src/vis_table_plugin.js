@@ -204,6 +204,13 @@ const tableModelCoreOptions = {
     default: false,
     order: 101
   },
+  freezeFirstColumns: {
+    section: "Table",
+    type: "number",
+    label: "Freeze first X columns",
+    default: 0,
+    order: 101.5,
+  },
   collapsedSubtotals: {
     section: "Table",
     type: "string",

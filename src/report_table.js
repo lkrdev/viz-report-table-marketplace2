@@ -119,12 +119,127 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
             updateConfig({ collapsedSubtotals: collapsedPaths.join(',') })
         }
     }
+    applyStickyColumns();
   }
 
   const updateRowIcon = function(rowEl) {
     const isCollapsed = rowEl.classList.contains('collapsed')
     const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15'
     d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
+  }
+
+  function applyStickyColumns() {
+    const X = Number(config.freezeFirstColumns) || 0;
+    if (X > 0) {
+      const visContainer = document.getElementById('visContainer');
+      if (!visContainer) return;
+
+      visContainer.style.width = '100%';
+      visContainer.style.height = '100%';
+      visContainer.style.overflowX = 'auto';
+
+      const visibleCols = dataTable.getTableColumnGroups().flat();
+      const numColsToFreeze = Math.min(X, visibleCols.length);
+
+      if (numColsToFreeze > 0) {
+        document.querySelectorAll('#reportTable .sticky-col').forEach(el => {
+          el.style.position = '';
+          el.style.left = '';
+          el.classList.remove('sticky-col');
+        });
+
+        const trs = document.querySelectorAll('#reportTable tr');
+        const containerLeft = visContainer.getBoundingClientRect().left;
+        const scrollLeft = visContainer.scrollLeft;
+        const colLefts = {};
+        let rowSpans = {};
+
+        // Pass 1: Read column left offsets without dirtying the DOM to avoid layout thrashing
+        trs.forEach(tr => {
+          if (tr.style.display === 'none') return;
+          let c = 0;
+          Array.from(tr.children).forEach(cell => {
+            while (rowSpans[c] > 0) {
+              rowSpans[c]--;
+              c++;
+            }
+
+            const colSpan = cell.colSpan || 1;
+            const rowSpan = cell.rowSpan || 1;
+
+            if (rowSpan > 1) {
+              for (let s = 0; s < colSpan; s++) {
+                rowSpans[c + s] = rowSpan - 1;
+              }
+            }
+
+            if (c < numColsToFreeze && colLefts[c] === undefined) {
+              colLefts[c] = cell.getBoundingClientRect().left - containerLeft + scrollLeft;
+            }
+
+            c += colSpan;
+          });
+        });
+
+        // Reset rowSpans for Pass 2
+        rowSpans = {};
+
+        // Pass 2: Write styles and classes in a single batch
+        trs.forEach(tr => {
+          if (tr.style.display === 'none') return;
+          let c = 0;
+          Array.from(tr.children).forEach(cell => {
+            while (rowSpans[c] > 0) {
+              rowSpans[c]--;
+              c++;
+            }
+
+            const colSpan = cell.colSpan || 1;
+            const rowSpan = cell.rowSpan || 1;
+
+            if (rowSpan > 1) {
+              for (let s = 0; s < colSpan; s++) {
+                rowSpans[c + s] = rowSpan - 1;
+              }
+            }
+
+            if (c < numColsToFreeze) {
+              const left = colLefts[c];
+              if (left !== undefined) {
+                cell.style.left = left + 'px';
+                cell.classList.add('sticky-col');
+              }
+            }
+
+            c += colSpan;
+          });
+        });
+
+        let stickyStyle = document.getElementById('reportTableStickyStyle');
+        if (!stickyStyle) {
+          stickyStyle = document.createElement('style');
+          stickyStyle.id = 'reportTableStickyStyle';
+          stickyStyle.textContent = `
+            #reportTable .sticky-col {
+              position: sticky !important;
+            }
+            #reportTable thead .sticky-col {
+              z-index: 20;
+            }
+            #reportTable tbody .sticky-col {
+              z-index: 10;
+            }
+            th.sticky-col, td.sticky-col {
+              background-color: #ffffff;
+            }
+            #reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
+              background-color: #ffffbb;
+            }
+          `;
+          document.head.appendChild(stickyStyle);
+        }
+      }
+    }
   }
 
 
@@ -747,6 +862,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       document.head.appendChild(style);
     }
     
+    applyStickyColumns();
     if (config.customTheme === 'animate') {
       document.getElementById('visSvg').classList.remove('hidden')
       addOverlay()
