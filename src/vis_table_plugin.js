@@ -211,6 +211,13 @@ const tableModelCoreOptions = {
     default: 0,
     order: 101.5,
   },
+  freezeTableHeaders: {
+    section: "Table",
+    type: "boolean",
+    label: "Freeze table headers",
+    default: false,
+    order: 101.6,
+  },
   collapsedSubtotals: {
     section: "Table",
     type: "string",

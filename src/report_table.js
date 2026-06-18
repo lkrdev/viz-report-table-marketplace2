@@ -120,6 +120,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         }
     }
     applyStickyColumns();
+    applyStickyHeaders();
   }
 
   const updateRowIcon = function(rowEl) {
@@ -128,15 +129,57 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
   }
 
+  function applyStickyStyles() {
+    const X = Number(config.freezeFirstColumns) || 0;
+    const freezeHeaders = config.freezeTableHeaders;
+
+    const visContainer = document.getElementById('visContainer');
+    if (!visContainer) return;
+
+    if (X > 0 || freezeHeaders) {
+      visContainer.style.width = '100%';
+      visContainer.style.height = '100%';
+      visContainer.style.overflow = 'auto';
+    } else {
+      visContainer.style.width = '';
+      visContainer.style.height = '';
+      visContainer.style.overflow = '';
+    }
+  }
+
+  function applyStickyHeaders() {
+    applyStickyStyles();
+    if (config.freezeTableHeaders) {
+      let stickyHeaderStyle = document.getElementById('reportTableStickyHeaderStyle');
+      if (!stickyHeaderStyle) {
+        stickyHeaderStyle = document.createElement('style');
+        stickyHeaderStyle.id = 'reportTableStickyHeaderStyle';
+        stickyHeaderStyle.textContent = `
+          #reportTable thead th {
+            position: sticky !important;
+            top: 0;
+            z-index: 15;
+            background-color: #ffffff;
+          }
+          #reportTable thead th.sticky-col {
+            z-index: 25 !important;
+          }
+        `;
+        document.head.appendChild(stickyHeaderStyle);
+      }
+    } else {
+      const stickyHeaderStyle = document.getElementById('reportTableStickyHeaderStyle');
+      if (stickyHeaderStyle) {
+        stickyHeaderStyle.remove();
+      }
+    }
+  }
+
   function applyStickyColumns() {
     const X = Number(config.freezeFirstColumns) || 0;
     if (X > 0) {
       const visContainer = document.getElementById('visContainer');
       if (!visContainer) return;
-
-      visContainer.style.width = '100%';
-      visContainer.style.height = '100%';
-      visContainer.style.overflowX = 'auto';
 
       const visibleCols = dataTable.getTableColumnGroups().flat();
       const numColsToFreeze = Math.min(X, visibleCols.length);
@@ -863,6 +906,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     }
     
     applyStickyColumns();
+    applyStickyHeaders();
     if (config.customTheme === 'animate') {
       document.getElementById('visSvg').classList.remove('hidden')
       addOverlay()

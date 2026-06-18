@@ -85,7 +85,7 @@ describe('Freeze first X columns option and functionality', () => {
 
     const visContainer = document.getElementById('visContainer');
     expect(visContainer).toBeDefined();
-    expect(visContainer.style.overflowX).toBe('auto');
+    expect(visContainer.style.overflow).toBe('auto');
     expect(visContainer.style.width).toBe('100%');
 
     // Check that sticky styles are injected
