@@ -89,6 +89,7 @@ const tableModelCoreOptions = {
   },
 
   columnOrder: {},
+  clientSorts: {},
   
   rowSubtotals: {
     section: "Table",
@@ -268,6 +269,7 @@ class VisPluginTableModel {
     this.columns = []
     this.data = []
     this.subtotals_data = {}
+    this.subtotalRows = {}
 
     this.transposed_headers = []
     this.transposed_columns = []
@@ -1323,6 +1325,7 @@ class VisPluginTableModel {
     });
 
     depths.forEach((depth, depthIndex) => {
+      this.subtotalRows[depthIndex] = []
       // BUILD GROUPINGS / SORT VALUES
       var subTotalGroups = []
       var latest_group = []
@@ -1453,6 +1456,7 @@ class VisPluginTableModel {
       }
       subtotalRow.sort.push({name: 'original_row', value: 9999});
       this.data.push(subtotalRow)
+      this.subtotalRows[depthIndex][s] = subtotalRow
     })
     })
     this.sortData()
@@ -1845,11 +1849,51 @@ class VisPluginTableModel {
     if (this.spanRows) { this.setRowSpans() }
   }
 
-  compareRows (dataTable) {
+  compareRowsByClientSorts (a, b) {
     const monthOrder = {
       'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
       'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
     }
+    if (this.clientSorts && this.clientSorts.length > 0) {
+      for (var c = 0; c < this.clientSorts.length; c++) {
+        var sortObj = this.clientSorts[c]
+        var cellA = a.data[sortObj.name]
+        var cellB = b.data[sortObj.name]
+
+        var valA = cellA ? (cellA.sort_value !== undefined ? cellA.sort_value : (cellA.value && cellA.value.sort_value !== undefined ? cellA.value.sort_value : cellA.value)) : null
+        var valB = cellB ? (cellB.sort_value !== undefined ? cellB.sort_value : (cellB.value && cellB.value.sort_value !== undefined ? cellB.value.sort_value : cellB.value)) : null
+
+        if (valA === null || valA === undefined) valA = ''
+        if (valB === null || valB === undefined) valB = ''
+
+        if (valA === '' && valB !== '') return 1
+        if (valA !== '' && valB === '') return -1
+
+        if (valA !== valB) {
+          if (sortObj.name && sortObj.name.endsWith('_month_name')) {
+            var m1 = monthOrder[String(valA).trim().toLowerCase().substring(0, 3)] ?? 999
+            var m2 = monthOrder[String(valB).trim().toLowerCase().substring(0, 3)] ?? 999
+            if (m1 !== m2) {
+              return sortObj.desc ? m2 - m1 : m1 - m2
+            }
+          }
+
+          if (typeof valA === 'string' && typeof valB === 'string') {
+            var cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
+            if (cmp !== 0) {
+              return sortObj.desc ? -cmp : cmp
+            }
+          } else {
+            if (valA < valB) return sortObj.desc ? 1 : -1
+            if (valA > valB) return sortObj.desc ? -1 : 1
+          }
+        }
+      }
+    }
+    return 0
+  }
+
+  compareRows (dataTable) {
     return function(a, b) {
       var sectionA = a.sort && a.sort.find(s => s.name === 'section') ? a.sort.find(s => s.name === 'section').value : 0
       var sectionB = b.sort && b.sort.find(s => s.name === 'section') ? b.sort.find(s => s.name === 'section').value : 0
@@ -1863,6 +1907,16 @@ class VisPluginTableModel {
         var subA = a.sort.find(s => s.name === pName) ? a.sort.find(s => s.name === pName).value : 0
         var subB = b.sort && b.sort.find(s => s.name === pName) ? b.sort.find(s => s.name === pName).value : 0
         if (subA !== subB) {
+          if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
+            const subRowA = dataTable.subtotalRows && dataTable.subtotalRows[k] ? dataTable.subtotalRows[k][subA] : null
+            const subRowB = dataTable.subtotalRows && dataTable.subtotalRows[k] ? dataTable.subtotalRows[k][subB] : null
+            if (subRowA && subRowB) {
+              const cmp = dataTable.compareRowsByClientSorts(subRowA, subRowB)
+              if (cmp !== 0) {
+                return cmp
+              }
+            }
+          }
           return subA - subB
         }
       }
@@ -1874,39 +1928,9 @@ class VisPluginTableModel {
       }
 
       if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
-        for (var c = 0; c < dataTable.clientSorts.length; c++) {
-          var sortObj = dataTable.clientSorts[c]
-          var cellA = a.data[sortObj.name]
-          var cellB = b.data[sortObj.name]
-
-          var valA = cellA ? (cellA.sort_value !== undefined ? cellA.sort_value : (cellA.value && cellA.value.sort_value !== undefined ? cellA.value.sort_value : cellA.value)) : null
-          var valB = cellB ? (cellB.sort_value !== undefined ? cellB.sort_value : (cellB.value && cellB.value.sort_value !== undefined ? cellB.value.sort_value : cellB.value)) : null
-
-          if (valA === null || valA === undefined) valA = ''
-          if (valB === null || valB === undefined) valB = ''
-
-          if (valA === '' && valB !== '') return 1
-          if (valA !== '' && valB === '') return -1
-
-          if (valA !== valB) {
-            if (sortObj.name && sortObj.name.endsWith('_month_name')) {
-              var m1 = monthOrder[String(valA).trim().toLowerCase().substring(0, 3)] ?? 999
-              var m2 = monthOrder[String(valB).trim().toLowerCase().substring(0, 3)] ?? 999
-              if (m1 !== m2) {
-                return sortObj.desc ? m2 - m1 : m1 - m2
-              }
-            }
-
-            if (typeof valA === 'string' && typeof valB === 'string') {
-              var cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
-              if (cmp !== 0) {
-                return sortObj.desc ? -cmp : cmp
-              }
-            } else {
-              if (valA < valB) return sortObj.desc ? 1 : -1
-              if (valA > valB) return sortObj.desc ? -1 : 1
-            }
-          }
+        const cmp = dataTable.compareRowsByClientSorts(a, b)
+        if (cmp !== 0) {
+          return cmp
         }
       }
 

@@ -154,4 +154,86 @@ describe('clientSorts across multiple iterations', () => {
     const b = { sort: [{ name: 'group.name', value: 2 }, { name: 'other', value: 3 }] };
     expect(() => comparator(a, b)).not.toThrow();
   });
+
+  describe('sorting with row subtotals enabled', () => {
+    const getTestModel = () => {
+      const metadata = {
+        fields: {
+          dimension_like: [
+            { name: 'category', label: 'Category', type: 'string', category: 'dimension' },
+            { name: 'subcategory', label: 'Subcategory', type: 'string', category: 'dimension' }
+          ],
+          measure_like: [
+            { name: 'revenue', label: 'Revenue', type: 'number', category: 'measure', is_numeric: true }
+          ],
+          pivots: []
+        },
+        sorts: []
+      };
+      const rows = [
+        { category: { value: 'A' }, subcategory: { value: 'X' }, revenue: { value: 10 } },
+        { category: { value: 'A' }, subcategory: { value: 'Y' }, revenue: { value: 20 } },
+        { category: { value: 'B' }, subcategory: { value: 'Z' }, revenue: { value: 30 } },
+        { category: { value: 'B' }, subcategory: { value: 'W' }, revenue: { value: 40 } }
+      ];
+      return new VisPluginTableModel(rows, metadata, { rowSubtotals: true, subtotalDepth: '1' });
+    };
+
+    it('correctly indexes subtotal rows during construction', () => {
+      const model = getTestModel();
+      expect(model.subtotalRows).toBeDefined();
+      expect(model.subtotalRows[0]).toBeDefined();
+      expect(model.subtotalRows[0].length).toBe(2);
+      expect(model.subtotalRows[0][0].id).toBe('Subtotal|A');
+      expect(model.subtotalRows[0][1].id).toBe('Subtotal|B');
+    });
+
+    it('sorts subtotal groups and line items descending by subtotal/individual values', () => {
+      const model = getTestModel();
+      
+      // Sort descending by revenue
+      model.clientSort('revenue', false);
+      expect(model.clientSorts).toEqual([{ name: 'revenue', desc: true }]);
+
+      const sortedRows = model.data.map(r => ({
+        id: r.id,
+        type: r.type,
+        revenue: r.data.revenue.value
+      }));
+
+      expect(sortedRows).toEqual([
+        { id: 'B|W', type: 'line_item', revenue: 40 },
+        { id: 'B|Z', type: 'line_item', revenue: 30 },
+        { id: 'Subtotal|B', type: 'subtotal', revenue: 70 },
+        { id: 'A|Y', type: 'line_item', revenue: 20 },
+        { id: 'A|X', type: 'line_item', revenue: 10 },
+        { id: 'Subtotal|A', type: 'subtotal', revenue: 30 }
+      ]);
+    });
+
+    it('sorts subtotal groups and line items ascending by subtotal/individual values', () => {
+      const model = getTestModel();
+
+      // First sort (sets descending)
+      model.clientSort('revenue', false);
+      // Second sort (toggles to ascending)
+      model.clientSort('revenue', false);
+      expect(model.clientSorts).toEqual([{ name: 'revenue', desc: false }]);
+
+      const sortedRows = model.data.map(r => ({
+        id: r.id,
+        type: r.type,
+        revenue: r.data.revenue.value
+      }));
+
+      expect(sortedRows).toEqual([
+        { id: 'A|X', type: 'line_item', revenue: 10 },
+        { id: 'A|Y', type: 'line_item', revenue: 20 },
+        { id: 'Subtotal|A', type: 'subtotal', revenue: 30 },
+        { id: 'B|Z', type: 'line_item', revenue: 30 },
+        { id: 'B|W', type: 'line_item', revenue: 40 },
+        { id: 'Subtotal|B', type: 'subtotal', revenue: 70 }
+      ]);
+    });
+  });
 });

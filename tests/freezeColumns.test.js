@@ -43,7 +43,7 @@ global.looker = {
           ...vis,
           clearErrors: () => {},
           addError: () => {},
-          trigger: () => {}
+          trigger: jest.fn()
         };
       }
     }
@@ -85,13 +85,18 @@ describe('Freeze first X columns option and functionality', () => {
 
     const visContainer = document.getElementById('visContainer');
     expect(visContainer).toBeDefined();
-    expect(visContainer.style.overflow).toBe('auto');
+    expect(visContainer.style.overflowX).toBe('auto');
+    expect(visContainer.style.top).toBe('0px');
+    expect(visContainer.style.left).toBe('0px');
     expect(visContainer.style.width).toBe('100%');
+    expect(visContainer.style.height).toBe('100%');
 
     // Check that sticky styles are injected
     const stickyStyle = document.getElementById('reportTableStickyStyle');
     expect(stickyStyle).toBeDefined();
     expect(stickyStyle.textContent).toContain('position: sticky');
+    expect(stickyStyle.textContent).toContain('border-collapse: collapse !important');
+    expect(stickyStyle.textContent).toContain('border-spacing: 0 !important');
 
     // Check that cells in the first 2 columns have sticky class
     const stickyCells = document.querySelectorAll('#reportTable .sticky-col');
@@ -126,5 +131,34 @@ describe('Freeze first X columns option and functionality', () => {
     expect(firstRowCells[0].classList.contains('sticky-col')).toBe(true);
     expect(firstRowCells[1].classList.contains('sticky-col')).toBe(true);
     expect(firstRowCells[2].classList.contains('sticky-col')).toBe(false);
+  });
+
+  it('renders Clear Sorts button when clientSorts is active and clears sorts on click', async () => {
+    const { rows, metadata } = parseJsonBi(fixtures.group_name);
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+
+    addedVis.create(element, {});
+
+    const triggerSpy = jest.fn();
+    addedVis.trigger = triggerSpy;
+
+    const config = {
+      clientSorts: [{ name: 'history.created_month', desc: true }]
+    };
+
+    addedVis.updateAsync(rows, element, config, metadata, {}, () => {});
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    const clearBtn = document.getElementById('clearSortsBtn');
+    expect(clearBtn).toBeDefined();
+    expect(clearBtn.getAttribute('title')).toBe('Clear Client Sorts');
+
+    // Click the button
+    clearBtn.click();
+
+    // Verify it triggers updateConfig with empty clientSorts
+    expect(triggerSpy).toHaveBeenCalledWith('updateConfig', [{ clientSorts: [] }]);
   });
 });
