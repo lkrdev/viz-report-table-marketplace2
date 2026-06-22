@@ -133,15 +133,15 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     const X = Number(config.freezeFirstColumns) || 0;
     const freezeHeaders = config.freezeTableHeaders;
 
-    const visContainer = document.getElementById('visContainer');
+    const visContainer = element.querySelector('#visContainer');
     if (!visContainer) return;
 
     if (X > 0 || freezeHeaders) {
       visContainer.style.position = 'absolute';
       visContainer.style.top = '0';
       visContainer.style.left = '0';
-      visContainer.style.width = element.clientWidth ? element.clientWidth + 'px' : '100%';
-      visContainer.style.height = element.clientHeight ? element.clientHeight + 'px' : '100%';
+      visContainer.style.width = '100%';
+      visContainer.style.height = '100%';
       visContainer.style.overflowX = X > 0 ? 'auto' : '';
       visContainer.style.overflowY = freezeHeaders ? 'auto' : '';
     } else {
@@ -158,7 +158,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   function applyStickyHeaders() {
     applyStickyStyles();
     if (config.freezeTableHeaders) {
-      let stickyHeaderStyle = document.getElementById('reportTableStickyHeaderStyle');
+      let stickyHeaderStyle = element.querySelector('#reportTableStickyHeaderStyle');
       if (!stickyHeaderStyle) {
         stickyHeaderStyle = document.createElement('style');
         stickyHeaderStyle.id = 'reportTableStickyHeaderStyle';
@@ -173,10 +173,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
             z-index: 25 !important;
           }
         `;
-        document.head.appendChild(stickyHeaderStyle);
+        element.appendChild(stickyHeaderStyle);
       }
     } else {
-      const stickyHeaderStyle = document.getElementById('reportTableStickyHeaderStyle');
+      const stickyHeaderStyle = element.querySelector('#reportTableStickyHeaderStyle');
       if (stickyHeaderStyle) {
         stickyHeaderStyle.remove();
       }
@@ -186,7 +186,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   function applyStickyColumns() {
     const X = Number(config.freezeFirstColumns) || 0;
     if (X > 0) {
-      const visContainer = document.getElementById('visContainer');
+      const visContainer = element.querySelector('#visContainer');
       if (!visContainer) return;
 
       const visibleCols = dataTable.getTableColumnGroups().flat();
@@ -1027,8 +1027,6 @@ looker.plugins.visualizations.add({
     element.style.position = 'relative';
     element.style.margin = '0';
     element.style.padding = '0';
-    document.documentElement.style.height = '100%';
-    document.body.style.height = '100%';
 
     this.container = d3.select(element)
       .append('div')
