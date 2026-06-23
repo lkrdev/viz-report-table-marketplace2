@@ -287,7 +287,7 @@ class VisPluginTableModel {
     this.useShortName = config.useShortName || false
     this.useViewName = config.useViewName || false
     this.addRowSubtotals = config.rowSubtotals || false
-    this.addSubtotalDepth = config.subtotalDepth === '(all)' ? '(all)' : (parseInt(config.subtotalDepth)|| this.dimensions.length - 1)
+    this.addSubtotalDepth = config.subtotalDepth
     this.addColSubtotals = config.colSubtotals || false
     this.spanRows = false || config.spanRows
     this.spanCols = false || config.spanCols
@@ -314,6 +314,8 @@ class VisPluginTableModel {
     this.addPivotsAndHeaders(queryResponse)
     this.addDimensions(queryResponse, col_idx)
     this.addMeasures(queryResponse, col_idx)
+
+    this.addSubtotalDepth = this.addSubtotalDepth === '(all)' ? '(all)' : (parseInt(this.addSubtotalDepth) || this.dimensions.length - 1)
 
     this.checkVarianceCalculations()
     if (this.useIndexColumn) { this.addIndexColumn(queryResponse) }
