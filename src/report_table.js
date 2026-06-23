@@ -75,9 +75,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   const bounds = element.getBoundingClientRect()
   const chartCentreX = bounds.x + (bounds.width / 2);
   const chartCentreY = bounds.y + (bounds.height / 2);
-
-  if (element._clientSorts) {
-    dataTable.clientSorts = element._clientSorts.filter(s => 
+  const activeSorts = element._clientSorts || config.clientSorts || [];
+  if (activeSorts && activeSorts.length > 0) {
+    dataTable.clientSorts = activeSorts.filter(s => 
       dataTable.columns.some(c => c.id === s.name) ||
       dataTable.pivot_fields.some(p => p.name === s.name)
     );
@@ -120,6 +120,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         }
     }
     applyStickyColumns();
+    applyStickyHeaders();
   }
 
   const updateRowIcon = function(rowEl) {
@@ -128,15 +129,65 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
   }
 
+  function applyStickyStyles() {
+    const X = Number(config.freezeFirstColumns) || 0;
+    const freezeHeaders = config.freezeTableHeaders;
+
+    const visContainer = element.querySelector('#visContainer');
+    if (!visContainer) return;
+
+    if (X > 0 || freezeHeaders) {
+      visContainer.style.position = 'absolute';
+      visContainer.style.top = '0';
+      visContainer.style.left = '0';
+      visContainer.style.width = '100%';
+      visContainer.style.height = '100%';
+      visContainer.style.overflowX = X > 0 ? 'auto' : '';
+      visContainer.style.overflowY = freezeHeaders ? 'auto' : '';
+    } else {
+      visContainer.style.position = '';
+      visContainer.style.top = '';
+      visContainer.style.left = '';
+      visContainer.style.width = '';
+      visContainer.style.height = '';
+      visContainer.style.overflowX = '';
+      visContainer.style.overflowY = '';
+    }
+  }
+
+  function applyStickyHeaders() {
+    applyStickyStyles();
+    if (config.freezeTableHeaders) {
+      let stickyHeaderStyle = element.querySelector('#reportTableStickyHeaderStyle');
+      if (!stickyHeaderStyle) {
+        stickyHeaderStyle = document.createElement('style');
+        stickyHeaderStyle.id = 'reportTableStickyHeaderStyle';
+        stickyHeaderStyle.textContent = `
+          #reportTable thead th {
+            position: sticky !important;
+            top: 0;
+            z-index: 15;
+            background-color: #ffffff;
+          }
+          #reportTable thead th.sticky-col {
+            z-index: 25 !important;
+          }
+        `;
+        element.appendChild(stickyHeaderStyle);
+      }
+    } else {
+      const stickyHeaderStyle = element.querySelector('#reportTableStickyHeaderStyle');
+      if (stickyHeaderStyle) {
+        stickyHeaderStyle.remove();
+      }
+    }
+  }
+
   function applyStickyColumns() {
     const X = Number(config.freezeFirstColumns) || 0;
     if (X > 0) {
-      const visContainer = document.getElementById('visContainer');
+      const visContainer = element.querySelector('#visContainer');
       if (!visContainer) return;
-
-      visContainer.style.width = '100%';
-      visContainer.style.height = '100%';
-      visContainer.style.overflowX = 'auto';
 
       const visibleCols = dataTable.getTableColumnGroups().flat();
       const numColsToFreeze = Math.min(X, visibleCols.length);
@@ -220,6 +271,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           stickyStyle = document.createElement('style');
           stickyStyle.id = 'reportTableStickyStyle';
           stickyStyle.textContent = `
+            #reportTable {
+              border-collapse: collapse !important;
+              border-spacing: 0 !important;
+            }
             #reportTable .sticky-col {
               position: sticky !important;
             }
@@ -416,6 +471,12 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           var shiftKey = d3.event ? d3.event.shiftKey : false
           dataTable.clientSort(sortId, shiftKey)
           element._clientSorts = dataTable.clientSorts
+          element._skipNextUpdate = true
+          if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
+          element._skipNextUpdateTimeout = setTimeout(() => {
+            element._skipNextUpdate = false
+          }, 500)
+          updateConfig({ clientSorts: dataTable.clientSorts })
           redraw()
         }
       })
@@ -820,7 +881,32 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       collapseAllBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<polyline points="6 15 12 9 18 15"></polyline>');
     }
 
-    if (config.exposeDownloadLink || dataTable.hasSubtotals) {
+    if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
+      let buttonCount = 0;
+      if (config.exposeDownloadLink) buttonCount++;
+      if (dataTable.hasSubtotals) buttonCount += 2;
+
+      const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
+      const rightOffsetClearSorts = (RIGHT_OFFSET_BASE + buttonCount * step) + "px";
+
+      const clearSortsBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
+      Object.entries(baseActionBtnStyle).forEach(([k, v]) => clearSortsBtn.style(k, v))
+      clearSortsBtn.style("top", "10px").style("right", rightOffsetClearSorts)
+      clearSortsBtn.on("click", () => {
+        dataTable.clientSorts = []
+        element._clientSorts = []
+        element._skipNextUpdate = true
+        if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
+        element._skipNextUpdateTimeout = setTimeout(() => {
+          element._skipNextUpdate = false
+        }, 500)
+        updateConfig({ clientSorts: [] })
+        redraw()
+      });
+      clearSortsBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
+    }
+
+    if (config.exposeDownloadLink || dataTable.hasSubtotals || (dataTable.clientSorts && dataTable.clientSorts.length > 0)) {
       // Add CSS hover styles
       d3.select("#visContainer")
         .style("position", "relative")
@@ -863,6 +949,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     }
     
     applyStickyColumns();
+    applyStickyHeaders();
     if (config.customTheme === 'animate') {
       document.getElementById('visSvg').classList.remove('hidden')
       addOverlay()
@@ -899,6 +986,13 @@ looker.plugins.visualizations.add({
   },
 
   updateAsync: function(data, element, config, queryResponse, details, done) {
+    if (element._skipNextUpdate) {
+      element._skipNextUpdate = false
+      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
+      done()
+      return;
+    }
+
     const updateColumnOrder = newOrder => {
       this.trigger('updateConfig', [{ columnOrder: newOrder }])
     }
@@ -929,6 +1023,10 @@ looker.plugins.visualizations.add({
       var elem = document.querySelector('#visContainer');
       elem.parentNode.removeChild(elem);  
     } catch(e) {}    
+
+    element.style.position = 'relative';
+    element.style.margin = '0';
+    element.style.padding = '0';
 
     this.container = d3.select(element)
       .append('div')
