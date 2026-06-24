@@ -3,8 +3,6 @@ export async function downloadTableAsExcel() {
     const props = [
       "font-size",
       "color",
-      "height",
-      "width",
       "text-align",
       "border",
       "vertical-align",
@@ -56,9 +54,6 @@ export async function downloadTableAsExcel() {
         }
       } catch (error) {
         console.error("Error clicking download link:", error);
-        // Clean up on error too
-        URL.revokeObjectURL(url);
-        document.body.removeChild(downloadLink);
       }
     }, 500);
   }
