@@ -315,7 +315,10 @@ class VisPluginTableModel {
     this.addDimensions(queryResponse, col_idx)
     this.addMeasures(queryResponse, col_idx)
 
-    this.addSubtotalDepth = this.addSubtotalDepth === '(all)' ? '(all)' : (parseInt(this.addSubtotalDepth) || this.dimensions.length - 1)
+    const parsedDepth = parseInt(this.addSubtotalDepth, 10);
+    this.addSubtotalDepth = this.addSubtotalDepth === '(all)'
+      ? '(all)'
+      : Math.min(Math.max(1, isNaN(parsedDepth) ? this.dimensions.length - 1 : parsedDepth), this.dimensions.length - 1);
 
     this.checkVarianceCalculations()
     if (this.useIndexColumn) { this.addIndexColumn(queryResponse) }
