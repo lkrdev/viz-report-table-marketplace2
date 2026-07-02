@@ -84,7 +84,7 @@ describe('window.looker.table global function', () => {
   });
 
   test('renders seamlessly with direct json_detail_lite_stream payload', () => {
-    const jsonDetailPayload = require('../tmp/example-json_detail_lite_stream.json');
+    const jsonDetailPayload = require('./example_json_detail_lite_stream.json');
     window.looker.table(container, jsonDetailPayload);
     expect(container.querySelector('#visContainer')).not.toBeNull();
     expect(container.querySelector('table')).not.toBeNull();
