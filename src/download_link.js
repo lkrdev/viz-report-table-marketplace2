@@ -31,24 +31,23 @@ export function getTableExcelDataUrl(targetElement) {
     return null;
   }
 
-  const copy_tbl = tbl.cloneNode(true);
   if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
-    computedStyleToInlineStyle(copy_tbl, { recursive: true, properties: props });
+    computedStyleToInlineStyle(tbl, { recursive: true, properties: props });
   }
 
   const text =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
     '<meta http-equiv=Content-Type content="text/html; charset=utf-8"><body>' +
     '<meta name=Generator content="Microsoft Excel 15">' +
-    copy_tbl.outerHTML +
+    tbl.outerHTML +
     '</body></html>';
 
   return "data:application/vnd.ms-excel," + encodeURIComponent(text);
 }
 
 // Alternative function that doesn't require setShowDownload callback
-export async function downloadTableAsExcel() {
-    const url = getTableExcelDataUrl();
+export async function downloadTableAsExcel(targetElement) {
+    const url = getTableExcelDataUrl(targetElement);
     if (!url) return;
     const text = decodeURIComponent(url.replace("data:application/vnd.ms-excel,", ""));
 

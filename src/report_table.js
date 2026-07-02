@@ -805,10 +805,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         "box-shadow": "0 2px 4px rgba(0, 0, 0, 0.1)"
     }
 
+    const visContainerSelection = d3.select(element).select("#visContainer");
+
     // Add download button only if exposeDownloadLink is true
     if (config.exposeDownloadLink) {
-      const downloadButton = d3
-        .select("#visContainer")
+      const downloadButton = visContainerSelection
         .append("button")
         .attr("class", "vis-action-btn")
         .attr("id", "downloadButton")
@@ -818,14 +819,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       downloadButton.style("top", "10px").style("right", RIGHT_OFFSET_BASE + "px")
 
       downloadButton.on("click", () => {
-          const el = d3.select('#downloadButton')
-          el.attr("class", "vis-action-btn loading")
+          downloadButton.attr("class", "vis-action-btn loading")
           // wait for the class to be registered
           setTimeout(async () => {
             try {
-              await downloadTableAsExcel();
+              await downloadTableAsExcel(element);
             } finally {
-              el.attr("class", "vis-action-btn")
+              downloadButton.attr("class", "vis-action-btn")
             }
           }, 250)
         });
@@ -852,7 +852,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       const rightOffsetExpand = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + step : RIGHT_OFFSET_BASE) + "px";
       const rightOffsetCollapse = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + 2 * step : RIGHT_OFFSET_BASE + step) + "px";
 
-      const expandAllBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
+      const expandAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => expandAllBtn.style(k, v))
       expandAllBtn.style("top", "10px").style("right", rightOffsetExpand)
       expandAllBtn.on("click", () => {
@@ -866,7 +866,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       });
       expandAllBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<polyline points="6 9 12 15 18 9"></polyline>');
 
-      const collapseAllBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "collapseAllBtn").attr("title", "Collapse All")
+      const collapseAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "collapseAllBtn").attr("title", "Collapse All")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => collapseAllBtn.style(k, v))
       collapseAllBtn.style("top", "10px").style("right", rightOffsetCollapse)
       collapseAllBtn.on("click", () => {
@@ -889,7 +889,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
       const rightOffsetClearSorts = (RIGHT_OFFSET_BASE + buttonCount * step) + "px";
 
-      const clearSortsBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
+      const clearSortsBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => clearSortsBtn.style(k, v))
       clearSortsBtn.style("top", "10px").style("right", rightOffsetClearSorts)
       clearSortsBtn.on("click", () => {
@@ -908,11 +908,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
 
     if (config.exposeDownloadLink || dataTable.hasSubtotals || (dataTable.clientSorts && dataTable.clientSorts.length > 0)) {
       // Add CSS hover styles
-      d3.select("#visContainer")
+      visContainerSelection
         .style("position", "relative")
         .style("cursor", "default")
         .on("mouseenter", () => {
-          d3.select("#visContainer").style("cursor", "default");
+          visContainerSelection.style("cursor", "default");
         });
 
       // Add CSS rules for hover and loading
@@ -1021,8 +1021,8 @@ const visPlugin = {
     // INITIALISE THE VIS
 
     try {
-      var elem = document.querySelector('#visContainer');
-      elem.parentNode.removeChild(elem);  
+      var elem = element.querySelector('#visContainer');
+      if (elem && elem.parentNode) elem.parentNode.removeChild(elem);  
     } catch(e) {}    
 
     element.style.position = 'relative';
