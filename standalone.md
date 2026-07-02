@@ -142,6 +142,23 @@ All available configuration options categorized by section:
 | `showHighlight` | `boolean` | `true` (default) | Highlight row on hover |
 | `showTooltip` | `boolean` | `true` (default) | Show tooltip on hover |
 
+#### Using External Custom CSS
+Setting `theme: 'custom'` and providing a URL in `customTheme` automatically injects a `<link rel="stylesheet">` into `<head>`:
+
+```javascript
+window.looker.table('#table-container', {
+  queryResponse,
+  data,
+  config: {
+    theme: 'custom',
+    customTheme: 'https://cdn.example.com/custom-theme.css'
+  }
+});
+```
+* **Browser Excel Export (`asExcel()`)**: Inlines the computed styles from the external CSS stylesheet onto every exported table cell (`<td>`, `<th>`).
+* **CORS Requirement**: External CSS URLs must serve Permissive CORS headers (`Access-Control-Allow-Origin: *`) when loaded cross-origin.
+
+
 ### Table & Layout
 | Option | Type | Values / Default | Description |
 | :--- | :--- | :--- | :--- |
