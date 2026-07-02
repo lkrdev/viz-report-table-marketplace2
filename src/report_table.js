@@ -1,6 +1,6 @@
 import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, INDEX_COLUMN, RIGHT_OFFSET_BASE } from './constants'
 import * as d3 from './d3loader'
-import { downloadTableAsExcel } from './download_link'
+import { downloadTableAsExcel, getTableExcelDataUrl } from './download_link'
 import { VisPluginTableModel } from './vis_table_plugin'
 
 
@@ -805,10 +805,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         "box-shadow": "0 2px 4px rgba(0, 0, 0, 0.1)"
     }
 
+    const visContainerSelection = d3.select(element).select("#visContainer");
+
     // Add download button only if exposeDownloadLink is true
     if (config.exposeDownloadLink) {
-      const downloadButton = d3
-        .select("#visContainer")
+      const downloadButton = visContainerSelection
         .append("button")
         .attr("class", "vis-action-btn")
         .attr("id", "downloadButton")
@@ -818,14 +819,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       downloadButton.style("top", "10px").style("right", RIGHT_OFFSET_BASE + "px")
 
       downloadButton.on("click", () => {
-          const el = d3.select('#downloadButton')
-          el.attr("class", "vis-action-btn loading")
+          downloadButton.attr("class", "vis-action-btn loading")
           // wait for the class to be registered
           setTimeout(async () => {
             try {
-              await downloadTableAsExcel();
+              await downloadTableAsExcel(element);
             } finally {
-              el.attr("class", "vis-action-btn")
+              downloadButton.attr("class", "vis-action-btn")
             }
           }, 250)
         });
@@ -852,7 +852,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       const rightOffsetExpand = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + step : RIGHT_OFFSET_BASE) + "px";
       const rightOffsetCollapse = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + 2 * step : RIGHT_OFFSET_BASE + step) + "px";
 
-      const expandAllBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
+      const expandAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => expandAllBtn.style(k, v))
       expandAllBtn.style("top", "10px").style("right", rightOffsetExpand)
       expandAllBtn.on("click", () => {
@@ -866,7 +866,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       });
       expandAllBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<polyline points="6 9 12 15 18 9"></polyline>');
 
-      const collapseAllBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "collapseAllBtn").attr("title", "Collapse All")
+      const collapseAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "collapseAllBtn").attr("title", "Collapse All")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => collapseAllBtn.style(k, v))
       collapseAllBtn.style("top", "10px").style("right", rightOffsetCollapse)
       collapseAllBtn.on("click", () => {
@@ -889,7 +889,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
       const rightOffsetClearSorts = (RIGHT_OFFSET_BASE + buttonCount * step) + "px";
 
-      const clearSortsBtn = d3.select("#visContainer").append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
+      const clearSortsBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
       Object.entries(baseActionBtnStyle).forEach(([k, v]) => clearSortsBtn.style(k, v))
       clearSortsBtn.style("top", "10px").style("right", rightOffsetClearSorts)
       clearSortsBtn.on("click", () => {
@@ -908,11 +908,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
 
     if (config.exposeDownloadLink || dataTable.hasSubtotals || (dataTable.clientSorts && dataTable.clientSorts.length > 0)) {
       // Add CSS hover styles
-      d3.select("#visContainer")
+      visContainerSelection
         .style("position", "relative")
         .style("cursor", "default")
         .on("mouseenter", () => {
-          d3.select("#visContainer").style("cursor", "default");
+          visContainerSelection.style("cursor", "default");
         });
 
       // Add CSS rules for hover and loading
@@ -964,12 +964,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   redraw()
 }
 
-if (typeof looker === 'undefined') {
-  global.looker = { plugins: { visualizations: { add: () => {} } } };
-}
-
-looker.plugins.visualizations.add({
+const visPlugin = {
   options: VisPluginTableModel.getCoreConfigOptions(),
+  trigger: function() {},
+  clearErrors: function() {},
+  addError: function(err) { console.error(err); },
   
   create: function(element, config) {
     this.svgContainer = d3.select(element)
@@ -993,21 +992,23 @@ looker.plugins.visualizations.add({
       return;
     }
 
+    const trigger = (typeof this.trigger === 'function' ? this.trigger : () => {}).bind(this);
+    const clearErrors = (typeof this.clearErrors === 'function' ? this.clearErrors : () => {}).bind(this);
+    const addError = (typeof this.addError === 'function' ? this.addError : (err) => console.error(err)).bind(this);
+
     const updateColumnOrder = newOrder => {
-      this.trigger('updateConfig', [{ columnOrder: newOrder }])
+      trigger('updateConfig', [{ columnOrder: newOrder }])
     }
     const updateConfig = newConfig => {
-      this.trigger('updateConfig', [newConfig])
+      trigger('updateConfig', [newConfig])
     }
-
-
 
     // ERROR HANDLING
 
-    this.clearErrors();
+    clearErrors();
 
-    if (queryResponse.fields.pivots.length > 2) {
-      this.addError({
+    if (queryResponse && queryResponse.fields && queryResponse.fields.pivots && queryResponse.fields.pivots.length > 2) {
+      addError({
         title: 'Max Two Pivots',
         message: 'This visualization accepts no more than 2 pivot fields.'
       });
@@ -1020,8 +1021,8 @@ looker.plugins.visualizations.add({
     // INITIALISE THE VIS
 
     try {
-      var elem = document.querySelector('#visContainer');
-      elem.parentNode.removeChild(elem);  
+      var elem = element.querySelector('#visContainer');
+      if (elem && elem.parentNode) elem.parentNode.removeChild(elem);  
     } catch(e) {}    
 
     element.style.position = 'relative';
@@ -1033,7 +1034,7 @@ looker.plugins.visualizations.add({
       .attr('id', 'visContainer')
 
     if (typeof config.columnOrder === 'undefined') {
-      this.trigger('updateConfig', [{ columnOrder: {} }])
+      trigger('updateConfig', [{ columnOrder: {} }])
     }
   
     // Dashboard-next fails to register config if no one has touched it
@@ -1055,13 +1056,85 @@ looker.plugins.visualizations.add({
 
     // console.log(config)
     var dataTable = new VisPluginTableModel(data, queryResponse, config)
-    this.trigger('registerOptions', dataTable.getConfigOptions())
+    trigger('registerOptions', dataTable.getConfigOptions())
     buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element)
 
     // DEBUG OUTPUT AND DONE
     // console.log('dataTable', dataTable)
     // console.log('container', document.getElementById('visContainer').parentNode)
     
-    done();
+    if (typeof done === 'function') {
+      done();
+    }
   }
-})
+}
+
+if (typeof looker === 'undefined') {
+  global.looker = { plugins: { visualizations: { add: () => {} } } };
+}
+
+looker.plugins.visualizations.add(visPlugin);
+
+const rootGlobal = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+rootGlobal.looker = rootGlobal.looker || {};
+rootGlobal.looker.table = function(targetElement, options = {}) {
+  let el = targetElement;
+  let opts = options;
+
+  if (targetElement && !targetElement.nodeType && typeof targetElement === 'object' && targetElement.element) {
+    el = targetElement.element;
+    opts = targetElement;
+  }
+
+  if (typeof el === 'string') {
+    el = document.querySelector(el);
+  }
+
+  if (!el) {
+    console.error('window.looker.table: Target element standard node or selector is required.');
+    return;
+  }
+
+  const data = opts.data || [];
+  const queryResponse = opts.queryResponse || opts;
+  const config = opts.config || {};
+  const details = opts.details || {};
+  const done = opts.done || (() => {});
+
+  const normalizedQueryResponse = Object.assign({}, queryResponse);
+  if (normalizedQueryResponse.fields) {
+    normalizedQueryResponse.fields = Object.assign({}, normalizedQueryResponse.fields);
+    normalizedQueryResponse.fields.dimension_like = normalizedQueryResponse.fields.dimension_like || normalizedQueryResponse.fields.dimensions || [];
+    normalizedQueryResponse.fields.measure_like = normalizedQueryResponse.fields.measure_like || [
+      ...(normalizedQueryResponse.fields.measures || []),
+      ...(normalizedQueryResponse.fields.table_calculations || [])
+    ];
+    normalizedQueryResponse.fields.pivots = normalizedQueryResponse.fields.pivots || [];
+  } else {
+    normalizedQueryResponse.fields = { dimension_like: [], measure_like: [], pivots: [] };
+  }
+
+  if (!el.hasChildNodes()) {
+    visPlugin.create(el, config);
+  }
+
+  visPlugin.updateAsync(data, el, config, normalizedQueryResponse, details, done);
+
+  return {
+    element: el,
+    asExcel: () => getTableExcelDataUrl(el),
+    downloadExcel: (filename) => {
+      const url = getTableExcelDataUrl(el);
+      if (!url) return null;
+      if (typeof window !== 'undefined' && window.document) {
+        const downloadRef = document.createElement("a");
+        downloadRef.href = url;
+        downloadRef.download = filename || `table-${new Date().toISOString().slice(0, 10)}.xls`;
+        document.body.appendChild(downloadRef);
+        downloadRef.click();
+        document.body.removeChild(downloadRef);
+      }
+      return url;
+    }
+  };
+};

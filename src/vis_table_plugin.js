@@ -1079,6 +1079,7 @@ class VisPluginTableModel {
 
   buildTotals(queryResponse) {
     var totals_ = queryResponse.totals_data
+    if (!totals_) return;
     var totalsRow = new Row('total')
 
     this.columns.forEach(column => {

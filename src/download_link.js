@@ -1,41 +1,56 @@
-// Alternative function that doesn't require setShowDownload callback
-export async function downloadTableAsExcel() {
-    const props = [
-      "font-size",
-      "color",
-      "text-align",
-      "border",
-      "vertical-align",
-      "font-style",
-      "font-weight",
-      "background-color",
-      "text-decoration",
-      "padding-left",
-      "border-bottom",
-      "border-top",
-      "border-left",
-      "border-right",
-    ];
-  
-    var tbl = document.getElementById("reportTable");
-  
-    if (!tbl) {
-      console.error("Table element with id 'reportTable' not found");
-      return;
-    }
-  
-    var copy_tbl = tbl.cloneNode(true);
+export function getTableExcelDataUrl(targetElement) {
+  const props = [
+    "font-size",
+    "color",
+    "text-align",
+    "border",
+    "vertical-align",
+    "font-style",
+    "font-weight",
+    "background-color",
+    "text-decoration",
+    "padding-left",
+    "border-bottom",
+    "border-top",
+    "border-left",
+    "border-right",
+  ];
+
+  let tbl = targetElement;
+  if (typeof tbl === 'string' && typeof document !== 'undefined') {
+    tbl = document.querySelector(tbl);
+  }
+  if (!tbl && typeof document !== 'undefined') {
+    tbl = document.getElementById("reportTable");
+  } else if (tbl && tbl.id !== "reportTable") {
+    tbl = tbl.querySelector("#reportTable") || tbl;
+  }
+
+  if (!tbl) {
+    console.error("Table element with id 'reportTable' not found");
+    return null;
+  }
+
+  if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
     computedStyleToInlineStyle(tbl, { recursive: true, properties: props });
-  
-    var text =
-      '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-    text +=
-      '<meta http-equiv=Content-Type content="text/html; charset=utf-8"><body>';
-    text += '<meta name=Generator content="Microsoft Excel 15">';
-    text += tbl.outerHTML;
-    text += "</body></html>";
-  
-    const url = "data:application/vnd.ms-excel," + encodeURIComponent(text);
+  }
+
+  const text =
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
+    '<meta http-equiv=Content-Type content="text/html; charset=utf-8"><body>' +
+    '<meta name=Generator content="Microsoft Excel 15">' +
+    tbl.outerHTML +
+    '</body></html>';
+
+  return "data:application/vnd.ms-excel," + encodeURIComponent(text);
+}
+
+// Alternative function that doesn't require setShowDownload callback
+export async function downloadTableAsExcel(targetElement) {
+    const url = getTableExcelDataUrl(targetElement);
+    if (!url) return;
+    const text = decodeURIComponent(url.replace("data:application/vnd.ms-excel,", ""));
+
   
     setTimeout(() => {
       const download = true;
