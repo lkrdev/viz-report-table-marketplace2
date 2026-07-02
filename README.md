@@ -43,6 +43,14 @@ visualization: {
 For more details on installing custom visualizations in a project with `manifest.lkml` or globally via the Admin panel, refer to the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/developing-custom-visualizations) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-visualizations).
 
 
+## Standalone Usage Outside Looker
+
+You can also use this visualization independently in any non-Looker web app by embedding the compiled `report_table.js` script and calling `window.looker.table()`.
+
+For complete integration instructions, method signatures, and payload data formats, see [standalone.md](standalone.md).
+
+
+
 ## Examples
 
 *Drag'n'drop columns for flat tables*

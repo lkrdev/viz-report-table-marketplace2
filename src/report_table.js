@@ -1,6 +1,6 @@
 import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, INDEX_COLUMN, RIGHT_OFFSET_BASE } from './constants'
 import * as d3 from './d3loader'
-import { downloadTableAsExcel } from './download_link'
+import { downloadTableAsExcel, getTableExcelDataUrl } from './download_link'
 import { VisPluginTableModel } from './vis_table_plugin'
 
 
@@ -964,12 +964,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   redraw()
 }
 
-if (typeof looker === 'undefined') {
-  global.looker = { plugins: { visualizations: { add: () => {} } } };
-}
-
-looker.plugins.visualizations.add({
+const visPlugin = {
   options: VisPluginTableModel.getCoreConfigOptions(),
+  trigger: function() {},
+  clearErrors: function() {},
+  addError: function(err) { console.error(err); },
   
   create: function(element, config) {
     this.svgContainer = d3.select(element)
@@ -993,21 +992,23 @@ looker.plugins.visualizations.add({
       return;
     }
 
+    const trigger = (typeof this.trigger === 'function' ? this.trigger : () => {}).bind(this);
+    const clearErrors = (typeof this.clearErrors === 'function' ? this.clearErrors : () => {}).bind(this);
+    const addError = (typeof this.addError === 'function' ? this.addError : (err) => console.error(err)).bind(this);
+
     const updateColumnOrder = newOrder => {
-      this.trigger('updateConfig', [{ columnOrder: newOrder }])
+      trigger('updateConfig', [{ columnOrder: newOrder }])
     }
     const updateConfig = newConfig => {
-      this.trigger('updateConfig', [newConfig])
+      trigger('updateConfig', [newConfig])
     }
-
-
 
     // ERROR HANDLING
 
-    this.clearErrors();
+    clearErrors();
 
-    if (queryResponse.fields.pivots.length > 2) {
-      this.addError({
+    if (queryResponse && queryResponse.fields && queryResponse.fields.pivots && queryResponse.fields.pivots.length > 2) {
+      addError({
         title: 'Max Two Pivots',
         message: 'This visualization accepts no more than 2 pivot fields.'
       });
@@ -1033,7 +1034,7 @@ looker.plugins.visualizations.add({
       .attr('id', 'visContainer')
 
     if (typeof config.columnOrder === 'undefined') {
-      this.trigger('updateConfig', [{ columnOrder: {} }])
+      trigger('updateConfig', [{ columnOrder: {} }])
     }
   
     // Dashboard-next fails to register config if no one has touched it
@@ -1055,13 +1056,85 @@ looker.plugins.visualizations.add({
 
     // console.log(config)
     var dataTable = new VisPluginTableModel(data, queryResponse, config)
-    this.trigger('registerOptions', dataTable.getConfigOptions())
+    trigger('registerOptions', dataTable.getConfigOptions())
     buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element)
 
     // DEBUG OUTPUT AND DONE
     // console.log('dataTable', dataTable)
     // console.log('container', document.getElementById('visContainer').parentNode)
     
-    done();
+    if (typeof done === 'function') {
+      done();
+    }
   }
-})
+}
+
+if (typeof looker === 'undefined') {
+  global.looker = { plugins: { visualizations: { add: () => {} } } };
+}
+
+looker.plugins.visualizations.add(visPlugin);
+
+const rootGlobal = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+rootGlobal.looker = rootGlobal.looker || {};
+rootGlobal.looker.table = function(targetElement, options = {}) {
+  let el = targetElement;
+  let opts = options;
+
+  if (targetElement && !targetElement.nodeType && typeof targetElement === 'object' && targetElement.element) {
+    el = targetElement.element;
+    opts = targetElement;
+  }
+
+  if (typeof el === 'string') {
+    el = document.querySelector(el);
+  }
+
+  if (!el) {
+    console.error('window.looker.table: Target element standard node or selector is required.');
+    return;
+  }
+
+  const data = opts.data || [];
+  const queryResponse = opts.queryResponse || opts;
+  const config = opts.config || {};
+  const details = opts.details || {};
+  const done = opts.done || (() => {});
+
+  const normalizedQueryResponse = Object.assign({}, queryResponse);
+  if (normalizedQueryResponse.fields) {
+    normalizedQueryResponse.fields = Object.assign({}, normalizedQueryResponse.fields);
+    normalizedQueryResponse.fields.dimension_like = normalizedQueryResponse.fields.dimension_like || normalizedQueryResponse.fields.dimensions || [];
+    normalizedQueryResponse.fields.measure_like = normalizedQueryResponse.fields.measure_like || [
+      ...(normalizedQueryResponse.fields.measures || []),
+      ...(normalizedQueryResponse.fields.table_calculations || [])
+    ];
+    normalizedQueryResponse.fields.pivots = normalizedQueryResponse.fields.pivots || [];
+  } else {
+    normalizedQueryResponse.fields = { dimension_like: [], measure_like: [], pivots: [] };
+  }
+
+  if (!el.hasChildNodes()) {
+    visPlugin.create(el, config);
+  }
+
+  visPlugin.updateAsync(data, el, config, normalizedQueryResponse, details, done);
+
+  return {
+    element: el,
+    asExcel: () => getTableExcelDataUrl(el),
+    downloadExcel: (filename) => {
+      const url = getTableExcelDataUrl(el);
+      if (!url) return null;
+      if (typeof window !== 'undefined' && window.document) {
+        const downloadRef = document.createElement("a");
+        downloadRef.href = url;
+        downloadRef.download = filename || `table-${new Date().toISOString().slice(0, 10)}.xls`;
+        document.body.appendChild(downloadRef);
+        downloadRef.click();
+        document.body.removeChild(downloadRef);
+      }
+      return url;
+    }
+  };
+};
