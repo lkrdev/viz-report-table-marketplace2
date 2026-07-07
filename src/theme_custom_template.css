@@ -1,3 +1,11 @@
+:root {
+  --table-bg: #ffffff;
+  --table-header-bg: #ffffff;
+  --table-hover-bg: #ffffbb;
+  --table-subtotal-bg: #D3D3D3;
+  --table-zebra-bg: #f9f9f9;
+}
+
 #tooltip {
     position: absolute;
     width: auto;
@@ -24,7 +32,7 @@
 }
 
 .hover {
-    background-color: #ffffbb;
+    background-color: var(--table-hover-bg);
 
     /* Add customization here  */
 
@@ -59,6 +67,7 @@
 
 .reportTable th {
   color: #000000;
+  background-color: var(--table-header-bg);
   border: 1px solid #CCCCCC; 
   border-bottom: 1px solid #CCCCCC !important;
   /* font-size: 10px;  */
@@ -73,12 +82,17 @@
   color: #000000;
   vertical-align: super;
   padding: 5px;
-  /*background: #FFFFFF;*/
+  background-color: var(--table-bg);
   border: 1px solid #CCCCCC; 
   border-collapse: collapse;
 
   /* Add customization here  */
 
+}
+
+/* ✅ Alternating row colors (Zebra striping) for non-totals/subtotals */
+.reportTable tr:not(.subtotal):not(.total):nth-child(even) td {
+  background-color: var(--table-zebra-bg);
 }
 
 .left {
@@ -105,7 +119,7 @@
 .subtotal {
   font-style: italic;
   font-weight: bold;
-  background: #D3D3D3;
+  background: var(--table-subtotal-bg);
 
   /* Add customization here  */
 
@@ -121,8 +135,27 @@
 
 .total.transposed {
   border-top: 0px !important;
-  background: #D3D3D3;
+  background: var(--table-subtotal-bg);
 
   /* Add customization here  */
 
+}
+
+/* =============================
+   STICKY COLUMNS BLEEDTHROUGH FIX
+============================= */
+.reportTable th.sticky-col {
+  box-shadow: 1px 0 0 0 var(--table-header-bg) !important;
+}
+.reportTable td.sticky-col {
+  box-shadow: 1px 0 0 0 var(--table-bg) !important;
+}
+.reportTable tr:not(.subtotal):not(.total):nth-child(even) td.sticky-col {
+  box-shadow: 1px 0 0 0 var(--table-zebra-bg) !important;
+}
+.reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
+  box-shadow: 1px 0 0 0 var(--table-hover-bg) !important;
+}
+.reportTable td.sticky-col.subtotal {
+  box-shadow: 1px 0 0 0 var(--table-subtotal-bg) !important;
 }
