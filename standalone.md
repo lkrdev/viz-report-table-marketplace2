@@ -201,7 +201,7 @@ global.document = dom.window.document;
 global.navigator = dom.window.navigator;
 
 // 2. Import compiled bundle
-require('./dist/report_table.js'); // or require('./src/report_table.js')
+require('./dist/report_table.js');
 
 // 3. Render visualization into virtual DOM
 window.looker.table('#table-container', {

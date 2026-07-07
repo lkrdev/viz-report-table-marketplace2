@@ -95,7 +95,7 @@ describe('Freeze first X columns option and functionality', () => {
     const stickyStyle = document.getElementById('reportTableStickyStyle');
     expect(stickyStyle).toBeDefined();
     expect(stickyStyle.textContent).toContain('position: sticky');
-    expect(stickyStyle.textContent).toContain('border-collapse: collapse !important');
+    expect(stickyStyle.textContent).toContain('border-collapse: separate !important');
     expect(stickyStyle.textContent).toContain('border-spacing: 0 !important');
 
     // Check that cells in the first 2 columns have sticky class

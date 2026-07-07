@@ -144,8 +144,6 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
   border: 1px solid #444444;
   border-radius: 6px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-}
-#tooltip p {
   color: #f5f5f5;
 }
 ```
@@ -176,8 +174,6 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
   border-radius: 8px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   padding: 8px 12px;
-}
-#tooltip p {
   color: #1a202c;
   font-weight: 500;
 }

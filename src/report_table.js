@@ -18,20 +18,31 @@ const BBOX_Y_ADJUST = 10
 
 const use_minicharts = false
 
-const removeStyles = async function() {
+const removeStyles = function() {
   const links = document.getElementsByTagName('link')
   while (links[0]) links[0].parentNode.removeChild(links[0])
 
-  Object.keys(themes).forEach(async (theme) => await themes[theme].unuse() )
+  Object.keys(themes).forEach((theme) => {
+    try {
+      themes[theme].unuse();
+    } catch(e) {}
+  });
 }
 
 const loadStylesheet = function(link) {
-  const linkElement = document.createElement('link');
+  return new Promise((resolve) => {
+    const linkElement = document.createElement('link');
 
-  linkElement.setAttribute('rel', 'stylesheet');
-  linkElement.setAttribute('href', link);
+    linkElement.setAttribute('rel', 'stylesheet');
+    linkElement.setAttribute('href', link);
+    linkElement.onload = () => resolve();
+    linkElement.onerror = () => {
+      console.warn('Failed to load stylesheet: ' + link);
+      resolve();
+    };
 
-  document.getElementsByTagName('head')[0].appendChild(linkElement);
+    document.getElementsByTagName('head')[0].appendChild(linkElement);
+  });
 };
 
 
@@ -87,16 +98,21 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     }
   }
 
-  removeStyles().then(() => {
-    if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
-      loadStylesheet(config.customTheme)
-    } else if (typeof themes[config.theme] !== 'undefined') {
+  let stylesLoadedPromise = null;
+  removeStyles();
+  if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
+    if (typeof themes[config.layout] !== 'undefined') {
+      themes[config.layout].use()
+    }
+    stylesLoadedPromise = loadStylesheet(config.customTheme);
+  } else {
+    if (typeof themes[config.theme] !== 'undefined') {
       themes[config.theme].use()
     }
     if (typeof themes[config.layout] !== 'undefined') {
       themes[config.layout].use()
     }
-  })
+  }
 
   const syncRowVisibility = function(skipUpdateConfig = false) {
     const rows = Array.from(document.querySelectorAll('#reportTable tbody tr'))
@@ -272,7 +288,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           stickyStyle.id = 'reportTableStickyStyle';
           stickyStyle.textContent = `
             #reportTable {
-              border-collapse: collapse !important;
+              border-collapse: separate !important;
               border-spacing: 0 !important;
             }
             #reportTable .sticky-col {
@@ -785,7 +801,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       d3.select('#visSvg').html('')
     }
 
-    renderTable().then(() => {
+    return renderTable().then(() => {
     document.getElementById('reportTable').classList.add('reveal')
 
     const baseActionBtnStyle = {
@@ -961,7 +977,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   })
   }
 
-  redraw()
+  if (stylesLoadedPromise) {
+    return stylesLoadedPromise.then(() => {
+      return redraw()
+    })
+  } else {
+    return redraw()
+  }
 }
 
 const visPlugin = {
@@ -1057,15 +1079,16 @@ const visPlugin = {
     // console.log(config)
     var dataTable = new VisPluginTableModel(data, queryResponse, config)
     trigger('registerOptions', dataTable.getConfigOptions())
-    buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element)
-
-    // DEBUG OUTPUT AND DONE
-    // console.log('dataTable', dataTable)
-    // console.log('container', document.getElementById('visContainer').parentNode)
-    
-    if (typeof done === 'function') {
-      done();
-    }
+    buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element).then(() => {
+      if (typeof done === 'function') {
+        done();
+      }
+    }).catch((err) => {
+      console.error(err);
+      if (typeof done === 'function') {
+        done();
+      }
+    });
   }
 }
 
@@ -1086,11 +1109,11 @@ rootGlobal.looker.table = function(targetElement, options = {}) {
     opts = targetElement;
   }
 
-  if (typeof el === 'string') {
+  if (typeof el === 'string' && typeof document !== 'undefined') {
     el = document.querySelector(el);
   }
 
-  if (!el) {
+  if (!el || typeof el.hasChildNodes !== 'function') {
     console.error('window.looker.table: Target element standard node or selector is required.');
     return;
   }
