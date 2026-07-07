@@ -145,14 +145,3 @@ tr.total + tr.subtotal > td.subtotal {
   padding: 5px;
   box-sizing: border-box;
 }
-
-/* =============================
-   STICKY COLUMNS BLEEDTHROUGH FIX
-============================= */
-.reportTable th.sticky-col,
-.reportTable td.sticky-col {
-  box-shadow: 1px 0 0 0 #ffffff !important;
-}
-.reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
-  box-shadow: 1px 0 0 0 #ffffbb !important;
-}
