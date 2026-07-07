@@ -288,7 +288,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           stickyStyle.id = 'reportTableStickyStyle';
           stickyStyle.textContent = `
             #reportTable {
-              border-collapse: collapse !important;
+              border-collapse: separate !important;
               border-spacing: 0 !important;
             }
             #reportTable .sticky-col {

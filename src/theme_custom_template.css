@@ -145,17 +145,17 @@
    STICKY COLUMNS BLEEDTHROUGH FIX
 ============================= */
 .reportTable th.sticky-col {
-  box-shadow: 2px 0 0 0 var(--table-header-bg) !important;
+  box-shadow: 1px 0 0 0 var(--table-header-bg) !important;
 }
 .reportTable td.sticky-col {
-  box-shadow: 2px 0 0 0 var(--table-bg) !important;
+  box-shadow: 1px 0 0 0 var(--table-bg) !important;
 }
 .reportTable tr:not(.subtotal):not(.total):nth-child(even) td.sticky-col {
-  box-shadow: 2px 0 0 0 var(--table-zebra-bg) !important;
+  box-shadow: 1px 0 0 0 var(--table-zebra-bg) !important;
 }
 .reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
-  box-shadow: 2px 0 0 0 var(--table-hover-bg) !important;
+  box-shadow: 1px 0 0 0 var(--table-hover-bg) !important;
 }
 .reportTable td.sticky-col.subtotal {
-  box-shadow: 2px 0 0 0 var(--table-subtotal-bg) !important;
+  box-shadow: 1px 0 0 0 var(--table-subtotal-bg) !important;
 }

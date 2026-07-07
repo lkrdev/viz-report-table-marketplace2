@@ -136,11 +136,11 @@ tr.total + tr.subtotal > td.subtotal {
 ============================= */
 .reportTable th.sticky-col,
 .reportTable td.sticky-col {
-  box-shadow: 2px 0 0 0 #ffffff !important;
+  box-shadow: 1px 0 0 0 #ffffff !important;
 }
 .reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
-  box-shadow: 2px 0 0 0 #ffffbb !important;
+  box-shadow: 1px 0 0 0 #ffffbb !important;
 }
 .reportTable td.sticky-col.subtotal {
-  box-shadow: 2px 0 0 0 #D3D3D3 !important;
+  box-shadow: 1px 0 0 0 #D3D3D3 !important;
 }
