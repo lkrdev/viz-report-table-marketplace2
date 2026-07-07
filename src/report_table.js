@@ -18,20 +18,31 @@ const BBOX_Y_ADJUST = 10
 
 const use_minicharts = false
 
-const removeStyles = async function() {
+const removeStyles = function() {
   const links = document.getElementsByTagName('link')
   while (links[0]) links[0].parentNode.removeChild(links[0])
 
-  Object.keys(themes).forEach(async (theme) => await themes[theme].unuse() )
+  Object.keys(themes).forEach((theme) => {
+    try {
+      themes[theme].unuse();
+    } catch(e) {}
+  });
 }
 
 const loadStylesheet = function(link) {
-  const linkElement = document.createElement('link');
+  return new Promise((resolve) => {
+    const linkElement = document.createElement('link');
 
-  linkElement.setAttribute('rel', 'stylesheet');
-  linkElement.setAttribute('href', link);
+    linkElement.setAttribute('rel', 'stylesheet');
+    linkElement.setAttribute('href', link);
+    linkElement.onload = () => resolve();
+    linkElement.onerror = () => {
+      console.warn('Failed to load stylesheet: ' + link);
+      resolve();
+    };
 
-  document.getElementsByTagName('head')[0].appendChild(linkElement);
+    document.getElementsByTagName('head')[0].appendChild(linkElement);
+  });
 };
 
 
@@ -87,16 +98,21 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     }
   }
 
-  removeStyles().then(() => {
-    if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
-      loadStylesheet(config.customTheme)
-    } else if (typeof themes[config.theme] !== 'undefined') {
+  let stylesLoadedPromise = null;
+  removeStyles();
+  if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
+    if (typeof themes[config.layout] !== 'undefined') {
+      themes[config.layout].use()
+    }
+    stylesLoadedPromise = loadStylesheet(config.customTheme);
+  } else {
+    if (typeof themes[config.theme] !== 'undefined') {
       themes[config.theme].use()
     }
     if (typeof themes[config.layout] !== 'undefined') {
       themes[config.layout].use()
     }
-  })
+  }
 
   const syncRowVisibility = function(skipUpdateConfig = false) {
     const rows = Array.from(document.querySelectorAll('#reportTable tbody tr'))
@@ -961,7 +977,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   })
   }
 
-  redraw()
+  if (stylesLoadedPromise) {
+    stylesLoadedPromise.then(() => {
+      redraw()
+    })
+  } else {
+    redraw()
+  }
 }
 
 const visPlugin = {
