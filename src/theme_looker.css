@@ -200,27 +200,27 @@ tr.total + tr.subtotal > td.subtotal {
    STICKY COLUMNS BLEEDTHROUGH FIX
 ============================= */
 .reportTable td.sticky-col {
-  box-shadow: 1px 0 0 0 #ffffff !important;
+  box-shadow: 2px 0 0 0 #ffffff !important;
 }
 .reportTable tr.hover > td.sticky-col:not(.subtotal):not(.total) {
-  box-shadow: 1px 0 0 0 #ffffbb !important;
+  box-shadow: 2px 0 0 0 #ffffbb !important;
 }
 .reportTable td.sticky-col.subtotal {
-  box-shadow: 1px 0 0 0 #D3D3D3 !important;
+  box-shadow: 2px 0 0 0 #D3D3D3 !important;
 }
 
 .reportTable th.sticky-col {
-  box-shadow: 1px 0 0 0 #ccd8e4 !important;
+  box-shadow: 2px 0 0 0 #ccd8e4 !important;
 }
 .reportTable th.sticky-col.dimension {
-  box-shadow: 1px 0 0 0 #e4ecf3 !important;
+  box-shadow: 2px 0 0 0 #e4ecf3 !important;
 }
 .reportTable th.sticky-col.pivot {
-  box-shadow: 1px 0 0 0 #ccd8e4 !important;
+  box-shadow: 2px 0 0 0 #ccd8e4 !important;
 }
 .reportTable th.sticky-col.measure {
-  box-shadow: 1px 0 0 0 #e4d0bd !important;
+  box-shadow: 2px 0 0 0 #e4d0bd !important;
 }
 .reportTable th.sticky-col.measure.calculation {
-  box-shadow: 1px 0 0 0 #c9dfc5 !important;
+  box-shadow: 2px 0 0 0 #c9dfc5 !important;
 }
