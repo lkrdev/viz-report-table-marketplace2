@@ -1077,22 +1077,46 @@ class VisPluginTableModel {
     })
   }
 
+  getDimensionColspans() {
+    const X = Number(this.config.freezeFirstColumns) || 0;
+    const visibleDimIds = [];
+    if (this.useIndexColumn) {
+      visibleDimIds.push(INDEX_COLUMN);
+    }
+    this.dimensions.forEach(d => {
+      if (!d.hide) {
+        visibleDimIds.push(d.name);
+      }
+    });
+    const N_dim = visibleDimIds.length;
+    
+    const colspans = {};
+    visibleDimIds.forEach(id => {
+      colspans[id] = { colspan: -1, rowspan: -1 };
+    });
+
+    if (N_dim === 0) return colspans;
+
+    if (X > 0 && X < N_dim) {
+      colspans[visibleDimIds[0]] = { colspan: X, rowspan: 1 };
+      colspans[visibleDimIds[X]] = { colspan: N_dim - X, rowspan: 1 };
+    } else {
+      colspans[visibleDimIds[0]] = { colspan: N_dim, rowspan: 1 };
+    }
+    return colspans;
+  }
+
   buildTotals(queryResponse) {
     var totals_ = queryResponse.totals_data
     if (!totals_) return;
     var totalsRow = new Row('total')
+    const dimColspans = this.getDimensionColspans();
 
     this.columns.forEach(column => {
       totalsRow.id = 'Total'
 
       if (column.modelField.type === 'dimension') {
-        if ([this.firstVisibleDimension, INDEX_COLUMN].includes(column.id)) {
-          var rowspan = 1
-          var colspan = this.useIndexColumn ? 1 : this.dimensions.filter(d => !d.hide).length
-        } else {
-          var rowspan = -1
-          var colspan = -1
-        }
+        const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
         totalsRow.data[column.id] = new DataCell({ 
           value: '', 
           cell_style: ['total', 'dimension'],
@@ -1147,7 +1171,6 @@ class VisPluginTableModel {
     if (this.useIndexColumn) {
       totalsRow.data[INDEX_COLUMN].value = 'TOTAL'
       totalsRow.data[INDEX_COLUMN].align = 'left'
-      totalsRow.data[INDEX_COLUMN].colspan = this.dimensions.filter(d => !d.hide).length
     } else {
       if (this.firstVisibleDimension) {
         totalsRow.data[this.firstVisibleDimension].value = 'TOTAL'
@@ -1313,6 +1336,7 @@ class VisPluginTableModel {
    *            // the string values in the line items.
    */
   addSubTotals () { 
+    const dimColspans = this.getDimensionColspans();
     var depths = this.addSubtotalDepth === '(all)'
                  ? Array.from({length: this.dimensions.length - 1}, (_, i) => i + 1)
                  : [this.addSubtotalDepth]
@@ -1366,13 +1390,7 @@ class VisPluginTableModel {
 
       this.columns.forEach(column => {
         if (column.modelField.type === 'dimension') {
-          if ([this.firstVisibleDimension, INDEX_COLUMN].includes(column.id)) {
-            var rowspan = 1
-            var colspan = this.useIndexColumn ? 1 : this.dimensions.filter(d => !d.hide).length
-          } else {
-            var rowspan = -1
-            var colspan = -1
-          }
+          const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'dimension'] : ['total', 'subtotal', 'nonNumeric', 'dimension']
           var cell = new DataCell({ 
             'cell_style': cell_style, 

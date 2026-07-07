@@ -1086,11 +1086,11 @@ rootGlobal.looker.table = function(targetElement, options = {}) {
     opts = targetElement;
   }
 
-  if (typeof el === 'string') {
+  if (typeof el === 'string' && typeof document !== 'undefined') {
     el = document.querySelector(el);
   }
 
-  if (!el) {
+  if (!el || typeof el.hasChildNodes !== 'function') {
     console.error('window.looker.table: Target element standard node or selector is required.');
     return;
   }

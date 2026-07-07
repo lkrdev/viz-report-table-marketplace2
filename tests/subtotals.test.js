@@ -76,4 +76,89 @@ describe('Subtotals option bug reproduction', () => {
     const subtotalRows = model.data.filter(r => r.type === 'subtotal');
     expect(subtotalRows.length).toBeGreaterThan(0);
   });
+
+  it('should split subtotal row dimension colspans according to freezeFirstColumns', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    metadata.fields.dimension_like.push({
+      name: 'history.category',
+      type: 'string',
+      label: 'History Category',
+      view: 'history',
+      category: 'dimension'
+    });
+    metadata.fields.dimension_like.push({
+      name: 'history.status',
+      type: 'string',
+      label: 'History Status',
+      view: 'history',
+      category: 'dimension'
+    });
+
+    const newRows = [
+      {
+        'history.created_month': { value: 'Brand A' },
+        'history.category': { value: 'Cat 1' },
+        'history.status': { value: 'Status 1' },
+        'history.count': { value: 10 }
+      }
+    ];
+
+    const model = new VisPluginTableModel(newRows, metadata, {
+      rowSubtotals: true,
+      freezeFirstColumns: 2
+    });
+
+    const subtotalRows = model.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBeGreaterThan(0);
+    const subtotalRow = subtotalRows[0];
+
+    expect(subtotalRow.data['history.created_month'].colspan).toBe(2);
+    expect(subtotalRow.data['history.category'].colspan).toBe(-1);
+    expect(subtotalRow.data['history.status'].colspan).toBe(1);
+  });
+
+  it('should split totals row dimension colspans according to freezeFirstColumns', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    metadata.fields.dimension_like.push({
+      name: 'history.category',
+      type: 'string',
+      label: 'History Category',
+      view: 'history',
+      category: 'dimension'
+    });
+    metadata.fields.dimension_like.push({
+      name: 'history.status',
+      type: 'string',
+      label: 'History Status',
+      view: 'history',
+      category: 'dimension'
+    });
+
+    const newRows = [
+      {
+        'history.created_month': { value: 'Brand A' },
+        'history.category': { value: 'Cat 1' },
+        'history.status': { value: 'Status 1' },
+        'history.count': { value: 10 }
+      }
+    ];
+
+    metadata.totals_data = {
+      'history.count': { value: 10 }
+    };
+
+    const model = new VisPluginTableModel(newRows, metadata, {
+      freezeFirstColumns: 2
+    });
+
+    const totalRow = model.data.find(r => r.type === 'total');
+    expect(totalRow).toBeDefined();
+
+    expect(totalRow.data['history.created_month'].colspan).toBe(2);
+    expect(totalRow.data['history.category'].colspan).toBe(-1);
+    expect(totalRow.data['history.status'].colspan).toBe(1);
+  });
 });
+
