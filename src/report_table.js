@@ -801,7 +801,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       d3.select('#visSvg').html('')
     }
 
-    renderTable().then(() => {
+    return renderTable().then(() => {
     document.getElementById('reportTable').classList.add('reveal')
 
     const baseActionBtnStyle = {
@@ -978,11 +978,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   }
 
   if (stylesLoadedPromise) {
-    stylesLoadedPromise.then(() => {
-      redraw()
+    return stylesLoadedPromise.then(() => {
+      return redraw()
     })
   } else {
-    redraw()
+    return redraw()
   }
 }
 
@@ -1079,15 +1079,16 @@ const visPlugin = {
     // console.log(config)
     var dataTable = new VisPluginTableModel(data, queryResponse, config)
     trigger('registerOptions', dataTable.getConfigOptions())
-    buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element)
-
-    // DEBUG OUTPUT AND DONE
-    // console.log('dataTable', dataTable)
-    // console.log('container', document.getElementById('visContainer').parentNode)
-    
-    if (typeof done === 'function') {
-      done();
-    }
+    buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element).then(() => {
+      if (typeof done === 'function') {
+        done();
+      }
+    }).catch((err) => {
+      console.error(err);
+      if (typeof done === 'function') {
+        done();
+      }
+    });
   }
 }
 
