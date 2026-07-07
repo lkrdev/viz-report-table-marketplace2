@@ -1393,6 +1393,7 @@ class VisPluginTableModel {
           const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'dimension'] : ['total', 'subtotal', 'nonNumeric', 'dimension']
           var cell = new DataCell({ 
+            value: '',
             'cell_style': cell_style, 
             align: column.modelField.is_numeric ? 'right' : 'left', 
             rowspan: rowspan, 

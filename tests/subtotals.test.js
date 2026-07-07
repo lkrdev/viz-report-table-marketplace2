@@ -116,6 +116,9 @@ describe('Subtotals option bug reproduction', () => {
     expect(subtotalRow.data['history.created_month'].colspan).toBe(2);
     expect(subtotalRow.data['history.category'].colspan).toBe(-1);
     expect(subtotalRow.data['history.status'].colspan).toBe(1);
+
+    expect(subtotalRow.data['history.created_month'].value).toBe('Brand A | Cat 1');
+    expect(subtotalRow.data['history.status'].value).toBe('');
   });
 
   it('should split totals row dimension colspans according to freezeFirstColumns', () => {
