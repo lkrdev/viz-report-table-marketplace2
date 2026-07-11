@@ -398,6 +398,13 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       .data(d => d).enter()
         .append('col')
         .attr('id', d => ['col',d.id].join('').replace('.', '') )
+        .attr('class', d => {
+          const col = dataTable.columns.find(c => c.id === d.id)
+          if (col && typeof col.pivot_index !== 'undefined') {
+            return `pivot-group-${col.pivot_index} pivot-group-${col.pivot_index % 2 === 0 ? 'even' : 'odd'}`
+          }
+          return ''
+        })
         .attr('span', 1)
         .style('width', d => {
           if (dataTable.minWidthForIndexColumns &&  d.type === 'index' && typeof columnTextWidths[d.id] !== 'undefined') {
@@ -466,6 +473,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       .attr('class', d => {
         var classes = ['reportTable']
         if (typeof d.cell_style !== 'undefined') { classes = classes.concat(d.cell_style) }
+        if (d.column && typeof d.column.pivot_index !== 'undefined') {
+          classes.push(`pivot-group-${d.column.pivot_index}`)
+          classes.push(`pivot-group-${d.column.pivot_index % 2 === 0 ? 'even' : 'odd'}`)
+        }
         return classes.join(' ')
       })
       .style('text-align', d => d.align)
@@ -589,6 +600,11 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         if (typeof d.value === 'object') { classes.push('cellSeries') }
         if (typeof d.align !== 'undefined') { classes.push(d.align) }
         if (typeof d.cell_style !== 'undefined') { classes = classes.concat(d.cell_style) }
+        const col = dataTable.columns.find(c => c.id === d.colid)
+        if (col && typeof col.pivot_index !== 'undefined') {
+          classes.push(`pivot-group-${col.pivot_index}`)
+          classes.push(`pivot-group-${col.pivot_index % 2 === 0 ? 'even' : 'odd'}`)
+        }
         return classes.join(' ')
       })
       .on('mouseover', d => {
