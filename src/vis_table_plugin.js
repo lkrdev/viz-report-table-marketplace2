@@ -654,7 +654,7 @@ class VisPluginTableModel {
     
     // add measures, list of full objects
     if (this.hasPivots) {
-      this.pivot_values.forEach(pivot_value => {
+      this.pivot_values.forEach((pivot_value, p_idx) => {
         var isRowTotal = pivot_value.key === '$$$_row_total_$$$'
         this.measures.forEach((measure, m) => {
           // for pivoted measures, skip table calcs for row totals 
@@ -666,6 +666,7 @@ class VisPluginTableModel {
             column.pivoted = isRowTotal ? false : true
             column.isRowTotal = isRowTotal
             column.pivot_key = pivot_value.key
+            column.pivot_index = p_idx
             column.idx = col_idx
 
             var tempSort = []
@@ -1517,6 +1518,10 @@ class VisPluginTableModel {
           subtotalColumn.pivoted = true
           subtotalColumn.subtotal = true
           subtotalColumn.pivot_key = [pivot, '$$$_subtotal_$$$'].join('|')
+          const matchPivotValue = this.pivot_values.find(pv => pv.data[pivot_dimension] === pivot)
+          if (matchPivotValue) {
+            subtotalColumn.pivot_index = this.pivot_values.indexOf(matchPivotValue)
+          }
           subtotalColumn.subtotal_data = {
             pivot: pivot,
             measure_idx: m,

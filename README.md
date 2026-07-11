@@ -179,6 +179,45 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 }
 ```
 
+#### 3. Grouped & Pivoted Column Targeting
+```css
+/* Style alternating grouped/pivoted column groups (e.g. QTD vs YTD) */
+#reportTable td.pivot-group-even,
+#reportTable th.pivot-group-even {
+  background-color: #ececec;
+}
+#reportTable td.pivot-group-odd,
+#reportTable th.pivot-group-odd {
+  background-color: #ffffff;
+}
+
+/* Or target a specific pivot group index directly (e.g., pivot group 0) */
+#reportTable .pivot-group-0 {
+  border-left: 2px solid #006B9B;
+}
+```
+
+#### 4. Targeting the Last X Rows
+```css
+/* Highlight the last 4 rows in the table (e.g. summary / grand total rows) */
+#reportTable tbody tr:nth-last-child(-n+4) td {
+  background-color: #f0f0f0 !important;
+  font-weight: bold;
+}
+```
+
+#### 5. Alternating Row Shading (Zebra Striping)
+```css
+/* Apply alternating row backgrounds to body rows */
+#reportTable tbody tr:nth-child(even) td {
+  background-color: #f8f9fa;
+}
+#reportTable tbody tr:nth-child(odd) td {
+  background-color: #ffffff;
+}
+```
+
+
 ### Hosting Your Custom CSS Simple & Free
 
 To load external CSS into Looker, the stylesheet must be served over HTTPS with permissive **CORS** (`Access-Control-Allow-Origin: *`) and a `Content-Type: text/css` header. 
