@@ -399,8 +399,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         .append('col')
         .attr('id', d => ['col',d.id].join('').replace('.', '') )
         .attr('class', d => {
-          if (typeof d.pivot_index !== 'undefined') {
-            return `pivot-group-${d.pivot_index} pivot-group-${d.pivot_index % 2 === 0 ? 'even' : 'odd'}`
+          const col = dataTable.columns.find(c => c.id === d.id)
+          if (col && typeof col.pivot_index !== 'undefined') {
+            return `pivot-group-${col.pivot_index} pivot-group-${col.pivot_index % 2 === 0 ? 'even' : 'odd'}`
           }
           return ''
         })

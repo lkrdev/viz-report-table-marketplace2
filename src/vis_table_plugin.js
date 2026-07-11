@@ -666,7 +666,7 @@ class VisPluginTableModel {
             column.pivoted = isRowTotal ? false : true
             column.isRowTotal = isRowTotal
             column.pivot_key = pivot_value.key
-            column.pivot_index = p_idx
+            column.pivot_index = isRowTotal ? undefined : p_idx
             column.idx = col_idx
 
             var tempSort = []
@@ -1518,9 +1518,9 @@ class VisPluginTableModel {
           subtotalColumn.pivoted = true
           subtotalColumn.subtotal = true
           subtotalColumn.pivot_key = [pivot, '$$$_subtotal_$$$'].join('|')
-          const matchPivotValue = this.pivot_values.find(pv => pv.data[pivot_dimension] === pivot)
-          if (matchPivotValue) {
-            subtotalColumn.pivot_index = this.pivot_values.indexOf(matchPivotValue)
+          const matchPivotIndex = this.pivot_values.findIndex(pv => pv.data[pivot_dimension] === pivot)
+          if (matchPivotIndex !== -1) {
+            subtotalColumn.pivot_index = matchPivotIndex
           }
           subtotalColumn.subtotal_data = {
             pivot: pivot,
