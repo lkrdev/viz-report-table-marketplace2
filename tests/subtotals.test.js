@@ -163,5 +163,52 @@ describe('Subtotals option bug reproduction', () => {
     expect(totalRow.data['history.category'].colspan).toBe(-1);
     expect(totalRow.data['history.status'].colspan).toBe(1);
   });
+
+  it('should maintain single subtotal per group when rows are interleaved by measure sort', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month, [{ name: 'history.count', desc: true }]);
+    
+    delete metadata.pivots;
+    metadata.fields.pivots = [];
+    metadata.fields.dimension_like.push({
+      name: 'history.category',
+      type: 'string',
+      label: 'History Category',
+      view: 'history',
+      category: 'dimension'
+    });
+
+    const interleavedRows = [
+      {
+        'history.created_month': { value: 'France' },
+        'history.category': { value: 'Womens' },
+        'history.count': { value: 272 }
+      },
+      {
+        'history.created_month': { value: 'UK' },
+        'history.category': { value: 'Mens' },
+        'history.count': { value: 245 }
+      },
+      {
+        'history.created_month': { value: 'France' },
+        'history.category': { value: 'Mens' },
+        'history.count': { value: 239 }
+      }
+    ];
+
+    const model = new VisPluginTableModel(interleavedRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '1'
+    });
+
+    const subtotalRows = model.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBe(2);
+    expect(subtotalRows.map(r => r.data['history.created_month'].value)).toEqual(['France', 'UK']);
+
+    const franceSubtotal = subtotalRows.find(r => r.data['history.created_month'].value === 'France');
+    expect(franceSubtotal.data['history.count'].value).toBe(511);
+  });
 });
+
+
+
 
