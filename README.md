@@ -217,6 +217,15 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 }
 ```
 
+#### 6. Top-Aligning Table Cell Content
+```css
+/* Align table header and data cell text to the top across all cells */
+.reportTable th,
+.reportTable td {
+  vertical-align: top;
+}
+```
+
 
 ### Hosting Your Custom CSS Simple & Free
 
