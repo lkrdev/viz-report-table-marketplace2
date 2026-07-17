@@ -104,6 +104,9 @@ export async function downloadTableAsExcel(targetElement) {
       ) {
         element.style["text-decoration"] = "underline";
       }
+      if (key === "vertical-align") {
+        element.setAttribute("valign", computedStyle.getPropertyValue(key));
+      }
     }
   };
   
