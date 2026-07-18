@@ -66,6 +66,7 @@
 }
 
 .reportTable th {
+  vertical-align: top;
   color: #000000;
   background-color: var(--table-header-bg);
   border: 1px solid #CCCCCC; 
@@ -80,7 +81,7 @@
 
 .reportTable td {
   color: #000000;
-  vertical-align: super;
+  vertical-align: top;
   padding: 5px;
   background-color: var(--table-bg);
   border: 1px solid #CCCCCC; 

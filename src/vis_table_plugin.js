@@ -1358,22 +1358,26 @@ class VisPluginTableModel {
     depths.forEach((depth, depthIndex) => {
       this.subtotalRows[depthIndex] = []
       // BUILD GROUPINGS / SORT VALUES
+      // groupMap ensures non-contiguous rows (e.g. sorted by measure) share a single subtotal group
       var subTotalGroups = []
-      var latest_group = []
+      var groupMap = new Map()
       this.data.forEach((row, i) => {
         if (row.type === 'line_item') {
           var group = []
           for (var g = 0; g < depth; g++) {
             var dim = this.dimensions[g].name
-            group.push(row.data[dim].value)
+            group.push(row.data[dim]?.value)
           }
-          if (group.join('|') !== latest_group.join('|')) {
+          var groupKey = group.join('|')
+          var groupIdx = groupMap.get(groupKey)
+          if (groupIdx === undefined) {
+            groupIdx = subTotalGroups.length
             subTotalGroups.push(group)
-            latest_group = group
+            groupMap.set(groupKey, groupIdx)
           }
           var subSortObj = row.sort.find(s => s.name === 'subtotal_' + depthIndex);
           if (subSortObj) {
-            subSortObj.value = subTotalGroups.length - 1;
+            subSortObj.value = groupIdx;
           }
         }
 
@@ -1884,9 +1888,10 @@ class VisPluginTableModel {
       'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
       'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
     }
-    if (this.clientSorts && this.clientSorts.length > 0) {
-      for (var c = 0; c < this.clientSorts.length; c++) {
-        var sortObj = this.clientSorts[c]
+    const activeSorts = this.getActiveSorts ? this.getActiveSorts() : (this.clientSorts || [])
+    if (activeSorts && activeSorts.length > 0) {
+      for (var c = 0; c < activeSorts.length; c++) {
+        var sortObj = activeSorts[c]
         var cellA = a.data[sortObj.name]
         var cellB = b.data[sortObj.name]
 
@@ -1937,7 +1942,8 @@ class VisPluginTableModel {
         var subA = a.sort.find(s => s.name === pName) ? a.sort.find(s => s.name === pName).value : 0
         var subB = b.sort && b.sort.find(s => s.name === pName) ? b.sort.find(s => s.name === pName).value : 0
         if (subA !== subB) {
-          if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
+          const activeSorts = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts || []);
+          if (activeSorts && activeSorts.length > 0) {
             const subRowA = dataTable.subtotalRows && dataTable.subtotalRows[k] ? dataTable.subtotalRows[k][subA] : null
             const subRowB = dataTable.subtotalRows && dataTable.subtotalRows[k] ? dataTable.subtotalRows[k][subB] : null
             if (subRowA && subRowB) {
@@ -1957,7 +1963,8 @@ class VisPluginTableModel {
         return origA - origB
       }
 
-      if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
+      const activeSorts = dataTable.getActiveSorts ? dataTable.getActiveSorts() : (dataTable.clientSorts || []);
+      if (activeSorts && activeSorts.length > 0) {
         const cmp = dataTable.compareRowsByClientSorts(a, b)
         if (cmp !== 0) {
           return cmp
