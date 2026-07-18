@@ -1366,7 +1366,7 @@ class VisPluginTableModel {
           var group = []
           for (var g = 0; g < depth; g++) {
             var dim = this.dimensions[g].name
-            group.push(row.data[dim].value)
+            group.push(row.data[dim]?.value)
           }
           var groupKey = group.join('|')
           var groupIdx = groupMap.get(groupKey)

@@ -205,6 +205,7 @@ describe('Subtotals option bug reproduction', () => {
     expect(subtotalRows.map(r => r.data['history.created_month'].value)).toEqual(['France', 'UK']);
 
     const franceSubtotal = subtotalRows.find(r => r.data['history.created_month'].value === 'France');
+    expect(franceSubtotal).toBeDefined();
     expect(franceSubtotal.data['history.count'].value).toBe(511);
   });
 });
