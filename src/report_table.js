@@ -327,7 +327,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     var table = d3.select('#visContainer')
       .append('table')
         .attr('id', 'reportTable')
-        .attr('class', 'reportTable')
+        .attr('class', (dataTable.subtotalsOnTop || config.subtotalsOnTop || config.subtotalOnTop) ? 'reportTable subtotals-on-top' : 'reportTable')
         .style('opacity', 0)
 
     var drag = d3.drag()
@@ -514,6 +514,9 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         .append('tr')
         .attr('class', row => {
             let classes = row.type;
+            if (row.type === 'subtotal' && (dataTable.subtotalsOnTop || config.subtotalsOnTop || config.subtotalOnTop)) {
+                classes += ' subtotal-top subtotals-on-top';
+            }
             const rowPath = row.type === 'subtotal' ? String(row.id).substring(9) : String(row.id);
             if (config.startFolded) {
                 const savedUnfolded = config.expandSubtotals ? config.expandSubtotals.split(',') : [];
@@ -600,6 +603,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         if (typeof d.value === 'object') { classes.push('cellSeries') }
         if (typeof d.align !== 'undefined') { classes.push(d.align) }
         if (typeof d.cell_style !== 'undefined') { classes = classes.concat(d.cell_style) }
+        if (d.cell_style && d.cell_style.includes('subtotal') && (dataTable.subtotalsOnTop || config.subtotalsOnTop || config.subtotalOnTop)) {
+          if (!classes.includes('subtotal-top')) classes.push('subtotal-top')
+          if (!classes.includes('subtotals-on-top')) classes.push('subtotals-on-top')
+        }
         const col = dataTable.columns.find(c => c.id === d.colid)
         if (col && typeof col.pivot_index !== 'undefined') {
           classes.push(`pivot-group-${col.pivot_index}`)

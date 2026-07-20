@@ -208,7 +208,80 @@ describe('Subtotals option bug reproduction', () => {
     expect(franceSubtotal).toBeDefined();
     expect(franceSubtotal.data['history.count'].value).toBe(511);
   });
+
+  it('should position subtotals on top when subtotalsOnTop option is true', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    metadata.fields.dimension_like.push({
+      name: 'history.category',
+      type: 'string',
+      label: 'History Category',
+      view: 'history',
+      category: 'dimension'
+    });
+    metadata.fields.dimension_like.push({
+      name: 'history.status',
+      type: 'string',
+      label: 'History Status',
+      view: 'history',
+      category: 'dimension'
+    });
+
+    const multiLevelRows = [
+      {
+        'history.created_month': { value: 'France' },
+        'history.category': { value: 'Europe' },
+        'history.status': { value: 'Accessories' },
+        'history.count': { value: 100 }
+      },
+      {
+        'history.created_month': { value: 'France' },
+        'history.category': { value: 'Europe' },
+        'history.status': { value: 'Clothing' },
+        'history.count': { value: 200 }
+      }
+    ];
+
+    const modelBottom = new VisPluginTableModel(multiLevelRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)',
+      subtotalsOnTop: false
+    });
+
+    const labelsBottom = modelBottom.data.map(r => {
+      if (r.type === 'subtotal') return r.id;
+      return `${r.data['history.created_month']?.value} | ${r.data['history.category']?.value} | ${r.data['history.status']?.value}`;
+    });
+
+    // Expect line items first, then subtotal depth 1, then subtotal depth 0
+    expect(labelsBottom).toEqual([
+      'France | Europe | Accessories',
+      'France | Europe | Clothing',
+      'Subtotal|France|Europe',
+      'Subtotal|France'
+    ]);
+
+    const modelTop = new VisPluginTableModel(multiLevelRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)',
+      subtotalsOnTop: true
+    });
+
+    const labelsTop = modelTop.data.map(r => {
+      if (r.type === 'subtotal') return r.id;
+      return `${r.data['history.created_month']?.value} | ${r.data['history.category']?.value} | ${r.data['history.status']?.value}`;
+    });
+
+    // Expect subtotal depth 0 (France), subtotal depth 1 (France|Europe), then line items
+    expect(labelsTop).toEqual([
+      'Subtotal|France',
+      'Subtotal|France|Europe',
+      'France | Europe | Accessories',
+      'France | Europe | Clothing'
+    ]);
+  });
 });
+
 
 
 
