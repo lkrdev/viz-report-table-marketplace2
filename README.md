@@ -24,6 +24,7 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 
 ## Recent Updates
 
+- Added a "Subtotals on Top" option to position row subtotals above line items at the top of their respective groups.
 - Added an option to freeze the first X columns during horizontal scrolling (fully compatible with transposed tables).
 - Added support for dynamic field labels in Looker (such as LookML's `label_from_parameter` or Liquid conditional logic).
 
@@ -223,6 +224,19 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 .reportTable th,
 .reportTable td {
   vertical-align: top;
+}
+```
+
+#### 7. Targeting Flipped Subtotals (Subtotals on Top)
+
+> [!NOTE]
+> When the **Subtotals on Top** option is enabled, `.subtotal-top` and `.subtotals-on-top` classes are automatically applied to `#reportTable`, subtotal rows (`<tr>`), and subtotal cells (`<td>`).
+
+```css
+/* Style flipped subtotal rows specifically when "Subtotals on Top" is enabled */
+#reportTable tr.subtotal-top td {
+  background-color: #e3f2fd !important;
+  font-weight: bold;
 }
 ```
 

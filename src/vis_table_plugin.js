@@ -184,12 +184,19 @@ const tableModelCoreOptions = {
     default: false,
     order: 11
   },
+  subtotalsOnTop: {
+    section: "Table",
+    type: "boolean",
+    label: "Subtotals on Top",
+    default: false,
+    order: 12,
+  },
   hideZeroCols: {
     section: "Table",
     type: "boolean",
     label: "Hide Zero Columns",
     default: false,
-    order: 12,
+    order: 13,
   },
   indexColumn: {
     section: "Dimensions",
@@ -294,6 +301,7 @@ class VisPluginTableModel {
     this.useShortName = config.useShortName || false
     this.useViewName = config.useViewName || false
     this.addRowSubtotals = config.rowSubtotals || false
+    this.subtotalsOnTop = config.subtotalsOnTop || config.subtotalOnTop || false
     this.addSubtotalDepth = config.subtotalDepth
     this.addColSubtotals = config.colSubtotals || false
     this.spanRows = false || config.spanRows
@@ -1352,7 +1360,7 @@ class VisPluginTableModel {
         var neighbour_value = l > 0 ? leaves[l - 1].data[tier.name].value : null
 
         // Match: mark invisible (span_value = -1). Increment the span_tracker.
-        if (l > 0 && this_tier_value === neighbour_value) {
+        if (l > 0 && leaves[l - 1].type === 'line_item' && this_tier_value === neighbour_value) {
           leaf.data[tier.name].rowspan = -1
           leaf.data[tier.name].colspan = -1
           span_tracker[tier.name] += 1
@@ -1451,6 +1459,7 @@ class VisPluginTableModel {
         if (column.modelField.type === 'dimension') {
           const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'dimension'] : ['total', 'subtotal', 'nonNumeric', 'dimension']
+          if (this.subtotalsOnTop) { cell_style.push('subtotal-top', 'subtotals-on-top') }
           var cell = new DataCell({ 
             value: '',
             'cell_style': cell_style, 
@@ -1474,6 +1483,7 @@ class VisPluginTableModel {
 
         if (column.modelField.type === 'measure') {
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'measure'] : ['total', 'subtotal', 'nonNumeric', 'measure']
+          if (this.subtotalsOnTop) { cell_style.push('subtotal-top', 'subtotals-on-top') }
           var align = column.modelField.is_numeric ? 'right' : 'left'
           if (Object.entries(this.subtotals_data).length > 0 && !subtotalRow.id.startsWith('Subtotal|Others')) { // if subtotals already provided in Looker's queryResponse
             var cell = new DataCell({ 
@@ -1535,10 +1545,10 @@ class VisPluginTableModel {
         } else if (d === depthIndex) {
           subtotalRow.sort.push({name: 'subtotal_' + d, value: s});
         } else {
-          subtotalRow.sort.push({name: 'subtotal_' + d, value: 9999});
+          subtotalRow.sort.push({name: 'subtotal_' + d, value: this.subtotalsOnTop ? -1 : 9999});
         }
       }
-      subtotalRow.sort.push({name: 'original_row', value: 9999});
+      subtotalRow.sort.push({name: 'original_row', value: this.subtotalsOnTop ? -1 : 9999});
       this.data.push(subtotalRow)
       this.subtotalRows[depthIndex][s] = subtotalRow
     })

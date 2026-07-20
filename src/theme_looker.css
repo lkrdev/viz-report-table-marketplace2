@@ -187,6 +187,15 @@ tr.total + tr.subtotal > td.subtotal {
   border-bottom: 2px solid #696969 !important;
 }
 
+.subtotals-on-top tr.subtotal + tr.subtotal > td.subtotal {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+.subtotals-on-top tr.line_item + tr.subtotal > td.subtotal {
+  border-top: 2px solid #696969 !important;
+}
+
 .total.transposed {
   border-top: 0px !important;
   background: #D3D3D3;

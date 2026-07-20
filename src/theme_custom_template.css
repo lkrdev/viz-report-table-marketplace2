@@ -134,6 +134,18 @@
 
 }
 
+/* Styling for flipped subtotals (when "Subtotals on Top" is enabled) */
+/* .subtotal-top { font-weight: bold; } */
+
+.subtotals-on-top tr.subtotal + tr.subtotal > td.subtotal {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+.subtotals-on-top tr.line_item + tr.subtotal > td.subtotal {
+  border-top: 2px solid #000000 !important;
+}
+
 .total.transposed {
   border-top: 0px !important;
   background: var(--table-subtotal-bg);
