@@ -113,4 +113,77 @@ describe('Hide zero columns option', () => {
     expect(allUsersCol).toBeDefined();
     expect(allUsersCol.hide).toBe(true);
   });
+
+  it('does not hide columns with boolean false values when hideZeroCols is true', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    const modifiedRows = rows.map(row => {
+      const newRow = { ...row };
+      if (newRow['history.count'] && newRow['history.count']['All Users']) {
+        newRow['history.count']['All Users'].value = false;
+      }
+      return newRow;
+    });
+
+    const model = new VisPluginTableModel(modifiedRows, metadata, {
+      hideZeroCols: true
+    });
+
+    const allUsersCol = model.columns.find(c => c.id === 'All Users.history.count');
+    expect(allUsersCol).toBeDefined();
+    expect(allUsersCol.hide).toBe(false);
+  });
+
+  it('does not hide columns with empty arrays when hideZeroCols is true', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    const modifiedRows = rows.map(row => {
+      const newRow = { ...row };
+      if (newRow['history.count'] && newRow['history.count']['All Users']) {
+        newRow['history.count']['All Users'].value = [];
+      }
+      return newRow;
+    });
+
+    const model = new VisPluginTableModel(modifiedRows, metadata, {
+      hideZeroCols: true
+    });
+
+    const allUsersCol = model.columns.find(c => c.id === 'All Users.history.count');
+    expect(allUsersCol).toBeDefined();
+    expect(allUsersCol.hide).toBe(false);
+  });
+
+  it('does not hide columns with whitespace-only strings when hideZeroCols is true', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    const modifiedRows = rows.map(row => {
+      const newRow = { ...row };
+      if (newRow['history.count'] && newRow['history.count']['All Users']) {
+        newRow['history.count']['All Users'].value = "   ";
+      }
+      return newRow;
+    });
+
+    const model = new VisPluginTableModel(modifiedRows, metadata, {
+      hideZeroCols: true
+    });
+
+    const allUsersCol = model.columns.find(c => c.id === 'All Users.history.count');
+    expect(allUsersCol).toBeDefined();
+    expect(allUsersCol.hide).toBe(false);
+  });
+
+  it('does not hide columns when the dataset has no line_items when hideZeroCols is true', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    
+    // No rows at all
+    const model = new VisPluginTableModel([], metadata, {
+      hideZeroCols: true
+    });
+
+    const allUsersCol = model.columns.find(c => c.id === 'All Users.history.count');
+    expect(allUsersCol).toBeDefined();
+    expect(allUsersCol.hide).toBe(false);
+  });
 });

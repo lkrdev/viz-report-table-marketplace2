@@ -906,16 +906,26 @@ class VisPluginTableModel {
         return
       }
 
+      var hasLineItems = false
       var allZero = true
       for (var i = 0; i < this.data.length; i++) {
         var row = this.data[i]
         if (row.type === 'line_item') {
+          hasLineItems = true
           var cell = row.data[column.id]
           if (cell) {
             var val = cell.value
             if (val !== null && val !== undefined && val !== '') {
-              var numVal = Number(val)
-              if (isNaN(numVal) || numVal !== 0) {
+              var isNumericZero = false
+              if (typeof val === 'number' && val === 0) {
+                isNumericZero = true
+              } else if (typeof val === 'string' && val.trim() !== '') {
+                var numVal = Number(val)
+                if (!isNaN(numVal) && numVal === 0) {
+                  isNumericZero = true
+                }
+              }
+              if (!isNumericZero) {
                 allZero = false
                 break
               }
@@ -924,7 +934,7 @@ class VisPluginTableModel {
         }
       }
 
-      if (allZero && this.data.length > 0) {
+      if (hasLineItems && allZero) {
         column.hide = true
       }
     })
