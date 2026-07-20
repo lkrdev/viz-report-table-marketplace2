@@ -184,6 +184,13 @@ const tableModelCoreOptions = {
     default: false,
     order: 11
   },
+  hideZeroCols: {
+    section: "Table",
+    type: "boolean",
+    label: "Hide Zero Columns",
+    default: false,
+    order: 12,
+  },
   indexColumn: {
     section: "Dimensions",
     type: "boolean",
@@ -298,6 +305,7 @@ class VisPluginTableModel {
     this.showTooltip = config.showTooltip || false
     this.showHighlight = config.showHighlight || false
     this.genericLabelForSubtotals = config.genericLabelForSubtotals || false
+    this.hideZeroCols = config.hideZeroCols || false
 
     this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
@@ -334,6 +342,8 @@ class VisPluginTableModel {
     if (this.addColSubtotals && this.pivot_fields.length === 2) { this.addColumnSubTotals() }
     // console.log('addColumnSubTotals() complete')
     if (this.variances) { this.addVarianceColumns() }
+
+    this.hideZeroColumns()
 
     // this.addColumnSeries()    // TODO: add column series for generated columns (eg column subtotals)
     this.sortData()
@@ -882,6 +892,50 @@ class VisPluginTableModel {
         } else {
           delete this.config[option]
         }
+      }
+    })
+  }
+
+  hideZeroColumns() {
+    if (!this.hideZeroCols) {
+      return
+    }
+
+    this.columns.forEach(column => {
+      if (column.isDimension) {
+        return
+      }
+
+      var hasLineItems = false
+      var allZero = true
+      for (var i = 0; i < this.data.length; i++) {
+        var row = this.data[i]
+        if (row.type === 'line_item') {
+          hasLineItems = true
+          var cell = row.data[column.id]
+          if (cell) {
+            var val = cell.value
+            if (val !== null && val !== undefined && val !== '') {
+              var isNumericZero = false
+              if (typeof val === 'number' && val === 0) {
+                isNumericZero = true
+              } else if (typeof val === 'string' && val.trim() !== '') {
+                var numVal = Number(val)
+                if (!isNaN(numVal) && numVal === 0) {
+                  isNumericZero = true
+                }
+              }
+              if (!isNumericZero) {
+                allZero = false
+                break
+              }
+            }
+          }
+        }
+      }
+
+      if (hasLineItems && allZero) {
+        column.hide = true
       }
     })
   }
