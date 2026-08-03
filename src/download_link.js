@@ -49,13 +49,12 @@ export function getTableExcelDataUrl(targetElement) {
         td.style['padding-left'] = pVal;
         td.style['text-indent'] = (indentLevel * 16) + 'px';
 
+        const spaceNode = (tbl.ownerDocument || document).createTextNode(spaces);
         const span = td.querySelector('span');
         if (span) {
-          span.textContent = spaces + span.textContent;
-        } else if (td.firstChild && td.firstChild.nodeType === 3) {
-          td.firstChild.textContent = spaces + td.firstChild.textContent;
+          span.insertBefore(spaceNode, span.firstChild);
         } else {
-          td.textContent = spaces + td.textContent;
+          td.insertBefore(spaceNode, td.firstChild);
         }
       }
     }

@@ -421,7 +421,7 @@ class VisPluginTableModel {
         order: i * 10 + 1,
       }
 
-      if (this.useHeadings || i === 0) {
+      if (this.useHeadings || dimension.name === this.firstVisibleDimension) {
         newOptions['heading|' + dimension.name] = {
           section: 'Dimensions',
           type: 'string',
@@ -1135,6 +1135,7 @@ class VisPluginTableModel {
       })
 
       if (this.subtotalStyle === 'collapsed') {
+        row.dimensionValues = this.dimensions.map(dimension => row.data[dimension.name]?.value)
         const depthLimit = (!this.subtotalDepth || this.subtotalDepth === '(all)')
           ? this.dimensions.length
           : (parseInt(this.subtotalDepth, 10) || this.dimensions.length);
@@ -1493,7 +1494,7 @@ class VisPluginTableModel {
           var group = []
           for (var g = 0; g < depth; g++) {
             var dim = this.dimensions[g].name
-            var dimVal = (row.id && row.id.split('|')[g] !== undefined) ? row.id.split('|')[g] : row.data[dim]?.value
+            var dimVal = (row.dimensionValues && row.dimensionValues[g] !== undefined) ? row.dimensionValues[g] : row.data[dim]?.value
             group.push(dimVal)
           }
           var groupKey = group.join('|')
@@ -1540,7 +1541,7 @@ class VisPluginTableModel {
               cell.value = 'Subtotal'
               cell.rendered = 'Subtotal'
             } else if (this.subtotalStyle === 'collapsed') {
-              cell.value = (subTotalGroup[depthIndex] !== undefined ? subTotalGroup[depthIndex] : subTotalGroup[subTotalGroup.length - 1]) || 'Others'
+              cell.value = subTotalGroup[subTotalGroup.length - 1] || 'Others'
               cell.rendered = cell.value
             } else {
               cell.value = subTotalGroup.join(' | ') ? subTotalGroup.join(' | ') : 'Others'
