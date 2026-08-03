@@ -98,6 +98,22 @@ describe('downloadTableAsExcel', () => {
     expect(mockOpenWindow.close).toHaveBeenCalled();
   });
 
+  it('should remove row collapse icons from the generated Excel data', async () => {
+    const tbl = document.createElement('table');
+    tbl.id = 'reportTable';
+    tbl.innerHTML = '<tbody><tr><td><span class="row-collapse-icon">[-]</span><span>July</span></td></tr></tbody>';
+    document.body.appendChild(tbl);
+
+    const promise = downloadTableAsExcel();
+    jest.advanceTimersByTime(500);
+    await promise;
+
+    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    expect(exportedHtml).not.toContain('row-collapse-icon');
+    expect(exportedHtml).not.toContain('[-]');
+    expect(exportedHtml).toContain('July');
+  });
+
   it('should handle errors during download gracefully', async () => {
     // Set up a mock table in the DOM
     const tbl = document.createElement('table');

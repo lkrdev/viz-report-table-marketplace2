@@ -35,11 +35,36 @@ export function getTableExcelDataUrl(targetElement) {
     computedStyleToInlineStyle(tbl, { recursive: true, properties: props });
   }
 
+  const exportTable = tbl.cloneNode(true);
+  exportTable.querySelectorAll('.row-collapse-icon').forEach(el => el.remove());
+
+  exportTable.querySelectorAll('td').forEach(td => {
+    const pVal = td.style.paddingLeft || (typeof getComputedStyle === 'function' ? getComputedStyle(td).getPropertyValue('padding-left') : '');
+    if (pVal && pVal !== '0px') {
+      const px = parseInt(pVal, 10);
+      if (!isNaN(px) && px > 0) {
+        const indentLevel = Math.max(1, Math.round(px / 16));
+        // Prepend Zero-Width Space (\u200B) so Google Sheets / Excel HTML parsers do not trim leading spaces
+        const spaces = '\u200B' + '\u00A0\u00A0\u00A0\u00A0'.repeat(indentLevel);
+        td.style['padding-left'] = pVal;
+        td.style['text-indent'] = (indentLevel * 16) + 'px';
+
+        const spaceNode = (tbl.ownerDocument || document).createTextNode(spaces);
+        const span = td.querySelector('span');
+        if (span) {
+          span.insertBefore(spaceNode, span.firstChild);
+        } else {
+          td.insertBefore(spaceNode, td.firstChild);
+        }
+      }
+    }
+  });
+
   const text =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
     '<meta http-equiv=Content-Type content="text/html; charset=utf-8"><body>' +
     '<meta name=Generator content="Microsoft Excel 15">' +
-    tbl.outerHTML +
+    exportTable.outerHTML +
     '</body></html>';
 
   return "data:application/vnd.ms-excel," + encodeURIComponent(text);
@@ -92,12 +117,7 @@ export async function downloadTableAsExcel(targetElement) {
     for (var y = 0; y < arr.length; y++) {
       const key = arr[y];
       element.style[key] = computedStyle.getPropertyValue(key);
-      if (
-        key === "padding-left" &&
-        computedStyle.getPropertyValue(key) === "25px"
-      ) {
-        element.style["mso-char-indent"] = "2";
-      }
+
       if (
         key === "text-decoration" &&
         computedStyle.getPropertyValue(key).indexOf("underline") > -1

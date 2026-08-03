@@ -141,8 +141,16 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
 
   const updateRowIcon = function(rowEl) {
     const isCollapsed = rowEl.classList.contains('collapsed')
-    const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15'
-    d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
+    const arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
+    if (arrowStyle === 'plus_minus') {
+      const iconEl = rowEl.querySelector('.row-collapse-icon')
+      if (iconEl) {
+        iconEl.textContent = isCollapsed ? '[+]' : '[-]'
+      }
+    } else {
+      const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15'
+      d3.select(rowEl).select('.row-collapse-icon polyline').attr('points', points)
+    }
   }
 
   function applyStickyStyles() {
@@ -371,13 +379,46 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
 
       if (!dataTable.transposeTable) {
         dataTable.column_series.filter(cs => !cs.column.hide).filter(cs => cs.column.modelField.type === 'dimension').forEach(cs => {
-          var maxLength = cs.series.values.reduce((a, b) => Math.max(getTextWidth(a), getTextWidth(b)))
           var columnId = cs.column.modelField.name
           if (dataTable.useIndexColumn) {
             columnId = INDEX_COLUMN
-            maxLength += 15
           }
-          columnTextWidths[columnId] = Math.ceil(maxLength)
+
+          if (dataTable.subtotalStyle === 'collapsed') {
+            const headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
+            const fontHeader = 'bold ' + config.headerFontSize + 'pt arial';
+            const fontBody = config.bodyFontSize + 'pt arial';
+            let maxW = getTextWidth(headerLabel, fontHeader) + 30;
+
+            const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
+              ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
+              : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+            const maxDepth = Math.max(depthLimit - 1, 0);
+
+            dataTable.data.forEach(row => {
+              if (row.type === 'subtotal') {
+                const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
+                const depth = row.depthIndex !== undefined ? row.depthIndex : 0;
+                const w = getTextWidth(String(text), fontBody) + (depth * 16) + 40;
+                if (w > maxW) maxW = w;
+              } else if (row.type === 'line_item') {
+                const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
+                const w = getTextWidth(String(text), fontBody) + (maxDepth * 16) + 30;
+                if (w > maxW) maxW = w;
+              }
+            });
+            columnTextWidths[columnId] = Math.ceil(maxW);
+          } else {
+            var values = cs.series.values || [];
+            var headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
+            var maxValW = values.length > 0 ? values.reduce((a, b) => Math.max(getTextWidth(a), getTextWidth(b)), 0) : 0;
+            var headerW = getTextWidth(headerLabel, 'bold ' + config.headerFontSize + 'pt arial') + 20;
+            var maxLength = Math.max(maxValW, headerW);
+            if (dataTable.useIndexColumn) {
+              maxLength += 15
+            }
+            columnTextWidths[columnId] = Math.ceil(maxLength)
+          }
         })
       } else {
         dataTable.headers.forEach(header => {
@@ -517,6 +558,17 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
             if (row.type === 'subtotal' && dataTable.subtotalsOnTop) {
                 classes += ' subtotal-top subtotals-on-top';
             }
+            const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+            if (subtotalStyle === 'collapsed') {
+                let depth = 0;
+                if (row.type === 'subtotal') {
+                    depth = row.depthIndex !== undefined ? row.depthIndex : 0;
+                } else if (row.type === 'line_item') {
+                    depth = dataTable.dimensions ? Math.max(dataTable.dimensions.length - 1, 1) : 1;
+                }
+                classes += ` subtotal-collapsed-${depth}`;
+            }
+
             const rowPath = row.type === 'subtotal' ? String(row.id).substring(9) : String(row.id);
             if (config.startFolded) {
                 const savedUnfolded = config.expandSubtotals ? config.expandSubtotals.split(',') : [];
@@ -558,7 +610,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           .enter()
           .append('td')
 
-    table_cells.html(d => {
+    table_cells.html((d, i, nodes) => {
         var text = ''
         if (Array.isArray(d.value)) {                     // cell is a list or number_list
           text = !(d.rendered === null) ? d.rendered : d.value.join(' ')
@@ -576,20 +628,33 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         text = String(text)
         text = text ? text.replace('-', '\u2011') : text  // prevents wrapping on minus sign / hyphen
 
-        if (d.cell_style.includes('subtotal') && d.cell_style.includes('dimension') && String(d.value).indexOf('Subtotal|Others') === -1) {
+        if (d.cell_style && d.cell_style.includes('dimension')) {
             const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
             if (isFirstCol) {
-                const rowPath = d.rowid.substring(9);
-                var isCollapsed = false;
-                if (config.startFolded) {
-                    isCollapsed = !(config.expandSubtotals && config.expandSubtotals.split(',').includes(rowPath))
-                } else {
-                    isCollapsed = config.collapsedSubtotals && config.collapsedSubtotals.split(',').includes(rowPath)
+                const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+                if (d.cell_style.includes('subtotal') && String(d.value).indexOf('Subtotal|Others') === -1) {
+                    const rowPath = d.rowid.substring(9);
+                    var isCollapsed = false;
+                    if (config.startFolded) {
+                        isCollapsed = !(config.expandSubtotals && config.expandSubtotals.split(',').includes(rowPath))
+                    } else {
+                        isCollapsed = config.collapsedSubtotals && config.collapsedSubtotals.split(',').includes(rowPath)
+                    }
+                    
+                    const arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
+                    let collapseIcon = ''
+                    if (arrowStyle === 'plus_minus') {
+                        const symbol = isCollapsed ? '[+]' : '[-]';
+                        collapseIcon = `<span class="row-collapse-icon" style="cursor: pointer; margin-right: 4px; vertical-align: middle; flex-shrink: 0; font-family: monospace;">${symbol}</span>`;
+                    } else {
+                        const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15';
+                        collapseIcon = `<svg class="row-collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-right: 4px; vertical-align: middle; flex-shrink: 0;"><polyline points="${points}"></polyline></svg>`;
+                    }
+
+                    return `<div style="display:flex; align-items:center;">${collapseIcon}<span>${text}</span></div>`;
+                } else if (subtotalStyle === 'collapsed' && !d.cell_style.includes('subtotal') && !d.cell_style.includes('total')) {
+                    return `<div style="display:flex; align-items:center;"><span>${text}</span></div>`;
                 }
-                
-                const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15'
-                const collapseIcon = `<svg class="row-collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-right: 4px; vertical-align: middle; flex-shrink: 0;"><polyline points="${points}"></polyline></svg>`;
-                return `<div style="display:flex; align-items:center;">${collapseIcon}<span>${text}</span></div>`;
             }
         }
         return text
@@ -598,7 +663,32 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
       .attr('colspan', d => d.colspan)
       .style('text-align', d => d.align)
       .style('font-size', config.bodyFontSize + 'px')
-      .attr('class', d => {
+      .style('padding-left', (d, i, nodes) => {
+        const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+        if (subtotalStyle === 'collapsed' && d.cell_style && d.cell_style.includes('dimension')) {
+          const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
+          if (isFirstCol) {
+            let depth = 0
+            if (d.cell_style.includes('subtotal')) {
+              const cellEl = (nodes && nodes[i]) || null
+              const trNode = cellEl && cellEl.closest ? cellEl.closest('tr') : null
+              if (d.depthIndex !== undefined) {
+                depth = d.depthIndex
+              } else if (trNode && trNode.getAttribute('data-subtotal-depth') !== null && trNode.getAttribute('data-subtotal-depth') !== '') {
+                depth = parseInt(trNode.getAttribute('data-subtotal-depth'), 10) || 0
+              }
+            } else if (!d.cell_style.includes('total')) {
+              const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
+                ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
+                : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+              depth = Math.max(depthLimit - 1, 0);
+            }
+            return (depth * 16) + 'px'
+          }
+        }
+        return null
+      })
+      .attr('class', (d, i, nodes) => {
         var classes = ['reportTable']
         if (typeof d.value === 'object') { classes.push('cellSeries') }
         if (typeof d.align !== 'undefined') { classes.push(d.align) }
@@ -606,6 +696,29 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
         if (d.cell_style && d.cell_style.includes('subtotal') && dataTable.subtotalsOnTop) {
           if (!classes.includes('subtotal-top')) classes.push('subtotal-top')
           if (!classes.includes('subtotals-on-top')) classes.push('subtotals-on-top')
+        }
+
+        const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+        if (subtotalStyle === 'collapsed' && d.cell_style && d.cell_style.includes('dimension')) {
+          const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
+          if (isFirstCol) {
+            let depth = 0
+            if (d.cell_style.includes('subtotal')) {
+              const cellEl = (nodes && nodes[i]) || null
+              const trNode = cellEl && cellEl.closest ? cellEl.closest('tr') : null
+              if (d.depthIndex !== undefined) {
+                depth = d.depthIndex
+              } else if (trNode && trNode.getAttribute('data-subtotal-depth') !== null && trNode.getAttribute('data-subtotal-depth') !== '') {
+                depth = parseInt(trNode.getAttribute('data-subtotal-depth'), 10) || 0
+              }
+            } else if (!d.cell_style.includes('total')) {
+              const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
+                ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
+                : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+              depth = Math.max(depthLimit - 1, 0);
+            }
+            classes.push(`subtotal-collapsed-${depth}`)
+          }
         }
         const col = dataTable.columns.find(c => c.id === d.colid)
         if (col && typeof col.pivot_index !== 'undefined') {

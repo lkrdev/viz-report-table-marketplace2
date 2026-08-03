@@ -280,7 +280,104 @@ describe('Subtotals option bug reproduction', () => {
       'France | Europe | Clothing'
     ]);
   });
+
+  it('should register subtotalStyle and arrowStyle in core options with correct defaults', () => {
+    const coreOptions = VisPluginTableModel.getCoreConfigOptions();
+    expect(coreOptions.subtotalStyle).toBeDefined();
+    expect(coreOptions.subtotalStyle.default).toBe('simple');
+    expect(coreOptions.subtotalStyle.values).toEqual([
+      { 'Simple': 'simple' },
+      { 'Collapsed': 'collapsed' }
+    ]);
+
+    expect(coreOptions.arrowStyle).toBeDefined();
+    expect(coreOptions.arrowStyle.default).toBe('arrows');
+    expect(coreOptions.arrowStyle.values).toEqual([
+      { 'Arrows': 'arrows' },
+      { '+/-': 'plus_minus' }
+    ]);
+  });
+
+  it('should format subtotal row label correctly when subtotalStyle is collapsed vs simple', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+    metadata.fields.dimension_like.push({
+      name: 'history.category',
+      type: 'string',
+      label: 'History Category',
+      view: 'history',
+      category: 'dimension'
+    });
+
+    const sampleRows = [
+      {
+        'history.created_month': { value: 'Brand A' },
+        'history.category': { value: 'Cat 1' },
+        'history.count': { value: 10 }
+      },
+      {
+        'history.created_month': { value: 'Brand A' },
+        'history.category': { value: 'Cat 2' },
+        'history.count': { value: 20 }
+      }
+    ];
+
+    const modelSimple = new VisPluginTableModel(sampleRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)',
+      subtotalStyle: 'simple'
+    });
+    const subtotalSimple = modelSimple.data.find(r => r.type === 'subtotal');
+    expect(subtotalSimple.data['history.created_month'].value).toBe('Brand A');
+
+    const modelCollapsed = new VisPluginTableModel(sampleRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)',
+      subtotalStyle: 'collapsed'
+    });
+    const subtotalCollapsed = modelCollapsed.data.find(r => r.type === 'subtotal');
+    expect(subtotalCollapsed.data['history.created_month'].value).toBe('Brand A');
+    expect(modelCollapsed.subtotalStyle).toBe('collapsed');
+
+    // On line item rows, parent dimension (history.created_month) should be empty, leaf dimension (history.category) should retain value
+    const lineItemSimple = modelSimple.data.find(r => r.type === 'line_item');
+    expect(lineItemSimple.data['history.created_month'].value).toBe('Brand A');
+    expect(lineItemSimple.data['history.category'].value).toBe('Cat 1');
+
+    const lineItemCollapsed = modelCollapsed.data.find(r => r.type === 'line_item');
+    expect(lineItemCollapsed.data['history.created_month'].value).toBe('Cat 1');
+
+    // Only 1 dimension column should be visible when subtotalStyle is collapsed
+    const visibleDimCols = modelCollapsed.columns.filter(c => c.isDimension && !c.hide);
+    expect(visibleDimCols.length).toBe(1);
+
+    // Header label should be concatenated dimension labels by default
+    const firstDimCol = visibleDimCols[0];
+    expect(firstDimCol.getHeaderCellLabelByType('field')).toBe('History Created Month / History Category');
+
+    // Header label should be overridden if custom heading option is specified for first dimension
+    const modelWithHeading = new VisPluginTableModel(sampleRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)',
+      subtotalStyle: 'collapsed',
+      'heading|history.created_month': 'G/L Account'
+    });
+    const colWithHeading = modelWithHeading.columns.find(c => c.id === 'history.created_month');
+    expect(colWithHeading.getHeaderCellLabelByType('field')).toBe('G/L Account');
+
+    // When subtotalDepth is '1' and subtotalStyle is 'collapsed', dimensions beyond depth 1 should remain visible
+    const modelPartialDepth = new VisPluginTableModel(sampleRows, metadata, {
+      rowSubtotals: true,
+      subtotalDepth: '1',
+      subtotalStyle: 'collapsed'
+    });
+    const visiblePartialDimCols = modelPartialDepth.columns.filter(c => c.isDimension && !c.hide);
+    expect(visiblePartialDimCols.length).toBe(2);
+    expect(visiblePartialDimCols[0].getHeaderCellLabelByType('field')).toBe('History Created Month');
+    expect(visiblePartialDimCols[1].getHeaderCellLabelByType('field')).toBe('History Category');
+  });
 });
+
+
 
 
 
