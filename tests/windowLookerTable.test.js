@@ -89,4 +89,44 @@ describe('window.looker.table global function', () => {
     expect(container.querySelector('#visContainer')).not.toBeNull();
     expect(container.querySelector('table')).not.toBeNull();
   });
+
+  test('renders plus_minus arrow style and collapsed subtotal style correctly', () => {
+    const queryResponse = {
+      fields: {
+        dimensions: [
+          { name: 'cat', label: 'Category' },
+          { name: 'subcat', label: 'Subcategory' }
+        ],
+        measures: [{ name: 'val', label: 'Value' }],
+        pivots: []
+      }
+    };
+
+    const data = [
+      { 'cat': { value: 'A' }, 'subcat': { value: 'A1' }, 'val': { value: 10 } },
+      { 'cat': { value: 'A' }, 'subcat': { value: 'A2' }, 'val': { value: 20 } }
+    ];
+
+    window.looker.table(container, {
+      data,
+      queryResponse,
+      config: {
+        rowSubtotals: true,
+        subtotalDepth: '(all)',
+        subtotalStyle: 'collapsed',
+        arrowStyle: 'plus_minus'
+      }
+    });
+
+    const collapseIcon = container.querySelector('.row-collapse-icon');
+    expect(collapseIcon).not.toBeNull();
+    expect(collapseIcon.textContent).toBe('[-]');
+
+    const subtotalRow = container.querySelector('tr.subtotal');
+    expect(subtotalRow.classList.contains('subtotal-collapsed-0')).toBe(true);
+
+    const lineItemRow = container.querySelector('tr.line_item');
+    expect(lineItemRow.classList.contains('subtotal-collapsed-1')).toBe(true);
+  });
 });
+

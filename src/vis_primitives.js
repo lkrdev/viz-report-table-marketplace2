@@ -1,3 +1,5 @@
+import { INDEX_COLUMN } from './constants'
+
 /**
  * Returns an array of given length, all populated with same value
  * Convenience function e.g. to initialise arrays of zeroes or nulls
@@ -294,6 +296,19 @@ class Column {
         
         if (typeof label_setting !== 'undefined' && label_setting !== this.modelField.label) {
           label = label_setting ? label_setting : label
+        }
+
+        if (this.vis.subtotalStyle === 'collapsed' && (this.id === this.vis.firstVisibleDimension || this.id === INDEX_COLUMN)) {
+          var headingOverride = this.vis.config['heading|' + this.modelField.name]
+          if (headingOverride && headingOverride.trim() !== '') {
+            label = headingOverride
+          } else {
+            const depthLimit = (!this.vis.subtotalDepth || this.vis.subtotalDepth === '(all)') 
+              ? this.vis.dimensions.length 
+              : (parseInt(this.vis.subtotalDepth, 10) || this.vis.dimensions.length);
+            const collapsedDims = this.vis.dimensions.slice(0, depthLimit);
+            label = collapsedDims.map(d => this.vis.useShortName ? (d.short_name || d.label) : d.label).join(' / ');
+          }
         }
 
         if (this.isVariance) {

@@ -191,6 +191,30 @@ const tableModelCoreOptions = {
     default: false,
     order: 12,
   },
+  subtotalStyle: {
+    section: "Table",
+    type: "string",
+    label: "Subtotal Style",
+    display: "select",
+    values: [
+      { 'Simple': 'simple' },
+      { 'Collapsed': 'collapsed' }
+    ],
+    default: "simple",
+    order: 12.1,
+  },
+  arrowStyle: {
+    section: "Table",
+    type: "string",
+    label: "Arrow Style",
+    display: "select",
+    values: [
+      { 'Arrows': 'arrows' },
+      { '+/-': 'plus_minus' }
+    ],
+    default: "arrows",
+    order: 12.2,
+  },
   hideZeroCols: {
     section: "Table",
     type: "boolean",
@@ -302,7 +326,8 @@ class VisPluginTableModel {
     this.useViewName = config.useViewName || false
     this.addRowSubtotals = config.rowSubtotals || false
     this.subtotalsOnTop = config.subtotalsOnTop || config.subtotalOnTop || false
-    this.addSubtotalDepth = config.subtotalDepth
+    this.subtotalDepth = config.subtotalDepth || config.subtotal_depth || '(all)'
+    this.addSubtotalDepth = this.subtotalDepth
     this.addColSubtotals = config.colSubtotals || false
     this.spanRows = false || config.spanRows
     this.spanCols = false || config.spanCols
@@ -313,6 +338,8 @@ class VisPluginTableModel {
     this.showTooltip = config.showTooltip || false
     this.showHighlight = config.showHighlight || false
     this.genericLabelForSubtotals = config.genericLabelForSubtotals || false
+    this.subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+    this.arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
     this.hideZeroCols = config.hideZeroCols || false
 
     this.clientSorts = config.clientSorts || []
@@ -394,12 +421,14 @@ class VisPluginTableModel {
         order: i * 10 + 1,
       }
 
-      newOptions['heading|' + dimension.name] = {
-        section: 'Dimensions',
-        type: 'string',
-        label: 'Heading',
-        default: '',
-        order: i * 10 + 2,
+      if (this.useHeadings || i === 0) {
+        newOptions['heading|' + dimension.name] = {
+          section: 'Dimensions',
+          type: 'string',
+          label: this.useHeadings ? 'Heading for ' + dimension.label : 'Heading',
+          default: '',
+          order: i * 10 + 2,
+        }
       }
 
       newOptions['hide|' + dimension.name] = {
@@ -637,6 +666,25 @@ class VisPluginTableModel {
         this.firstVisibleDimension = dimension.name
         break
       }
+    }
+
+    if (this.subtotalStyle === 'collapsed') {
+      var visibleDims = this.dimensions.filter(d => !d.hide)
+      var depthLimit = (!this.subtotalDepth || this.subtotalDepth === '(all)')
+        ? visibleDims.length
+        : (parseInt(this.subtotalDepth, 10) || visibleDims.length);
+
+      visibleDims.forEach((dim, idx) => {
+        if (idx > 0 && idx < depthLimit) {
+          dim.hide = true
+          var col = this.columns.find(c => c.id === dim.name)
+          if (col) col.hide = true
+        } else if (idx >= depthLimit) {
+          dim.hide = false
+          var col = this.columns.find(c => c.id === dim.name)
+          if (col) col.hide = false
+        }
+      })
     }
   }
 
@@ -1086,6 +1134,23 @@ class VisPluginTableModel {
         row.data[column.id] = cell
       })
 
+      if (this.subtotalStyle === 'collapsed') {
+        const depthLimit = (!this.subtotalDepth || this.subtotalDepth === '(all)')
+          ? this.dimensions.length
+          : (parseInt(this.subtotalDepth, 10) || this.dimensions.length);
+        const lastCollapsedDim = this.dimensions[depthLimit - 1]
+        if (lastCollapsedDim && row.data[lastCollapsedDim.name]) {
+          const leafValue = row.data[lastCollapsedDim.name].value
+          const leafRendered = row.data[lastCollapsedDim.name].rendered
+          const leafHtml = row.data[lastCollapsedDim.name].html
+          if (row.data[this.firstVisibleDimension]) {
+            row.data[this.firstVisibleDimension].value = leafValue
+            row.data[this.firstVisibleDimension].rendered = leafRendered
+            row.data[this.firstVisibleDimension].html = leafHtml
+          }
+        }
+      }
+
       if (this.useIndexColumn) {
         var last_dim = this.dimensions[this.dimensions.length - 1].name
         var sourceCell = row.data[last_dim]
@@ -1428,7 +1493,8 @@ class VisPluginTableModel {
           var group = []
           for (var g = 0; g < depth; g++) {
             var dim = this.dimensions[g].name
-            group.push(row.data[dim]?.value)
+            var dimVal = (row.id && row.id.split('|')[g] !== undefined) ? row.id.split('|')[g] : row.data[dim]?.value
+            group.push(dimVal)
           }
           var groupKey = group.join('|')
           var groupIdx = groupMap.get(groupKey)
@@ -1473,6 +1539,9 @@ class VisPluginTableModel {
             if (this.genericLabelForSubtotals) {
               cell.value = 'Subtotal'
               cell.rendered = 'Subtotal'
+            } else if (this.subtotalStyle === 'collapsed') {
+              cell.value = (subTotalGroup[depthIndex] !== undefined ? subTotalGroup[depthIndex] : subTotalGroup[subTotalGroup.length - 1]) || 'Others'
+              cell.rendered = cell.value
             } else {
               cell.value = subTotalGroup.join(' | ') ? subTotalGroup.join(' | ') : 'Others'
               cell.rendered = cell.value
