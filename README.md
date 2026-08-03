@@ -24,6 +24,7 @@ A table dedicated to single-page, enterprise summary reports. Useful for PDF exp
 
 ## Recent Updates
 
+- Added Collapsed Subtotals mode (`subtotalStyle: 'collapsed'`) with interactive expand/collapse row toggles (`arrowStyle`), single-column hierarchy indentation, and automatic header label merging.
 - Added a "Subtotals on Top" option to position row subtotals above line items at the top of their respective groups.
 - Added an option to freeze the first X columns during horizontal scrolling (fully compatible with transposed tables).
 - Added support for dynamic field labels in Looker (such as LookML's `label_from_parameter` or Liquid conditional logic).
@@ -81,6 +82,24 @@ For complete integration instructions, method signatures, and payload data forma
 *Transposing and PnL style reports*
 
 ![Transposing and PnL style reports](assets/report_table_07_PnL_transpose_theme.gif)
+
+
+## Collapsed Columns & Subtotals
+
+When analyzing multi-level hierarchies (such as Country > State > Category), standard tables often display redundant repeated columns. With **Collapsed Subtotals**, multiple dimension columns are collapsed into a single hierarchical column with visual indentation and interactive expand/collapse controls.
+
+![Collapsed Columns and Subtotals](assets/collapsed_columns.png)
+
+### Configuration Options
+
+- **Subtotal Style**:
+  - `Simple`: Standard multi-column layout with subtotal rows.
+  - `Collapsed`: Collapses hierarchical dimension columns into a single dimension column with indentation levels (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and automatically combines column headers (e.g. `Country / State / Category`).
+- **Arrow Style**:
+  - `Arrows`: Displays `▲` / `▼` toggle icons.
+  - `+/-`: Displays `[-]` / `[+]` toggle buttons.
+- **Start Collapsed**:
+  - When enabled, automatically collapses subtotal groups on initial render. Users can click any row toggle to expand or collapse child groups interactively.
 
 
 ## Tagging fields in LookML
