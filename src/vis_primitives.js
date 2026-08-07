@@ -312,15 +312,7 @@ class Column {
         }
 
         if (this.isVariance) {
-          if (this.vis.groupVarianceColumns) {
-            if (this.vis.pivot_values.length === 2) {
-              label = this.variance_type === 'absolute' ? label + ' #' : label + ' %'
-            } else {
-              label = this.variance_type === 'absolute' ? label + ' Var #' : label + ' Var %'
-            }
-          } else {
-            label = this.variance_type === 'absolute' ? 'Var #' : 'Var %'
-          }
+          label = this.variance_type === 'absolute' ? label + ' #' : label + ' %'
         }
     
         if (typeof this.vis.useViewName !== 'undefined' && this.vis.useViewName) {
