@@ -222,6 +222,13 @@ const tableModelCoreOptions = {
     default: false,
     order: 13,
   },
+  hideNullDimensionCols: {
+    section: "Table",
+    type: "boolean",
+    label: "Hide Null Dimension Columns",
+    default: false,
+    order: 13.1,
+  },
   indexColumn: {
     section: "Dimensions",
     type: "boolean",
@@ -341,6 +348,7 @@ class VisPluginTableModel {
     this.subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
     this.arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
     this.hideZeroCols = config.hideZeroCols || false
+    this.hideNullDimensionCols = config.hideNullDimensionCols || config.hideNullDimensions || config.hideNullDimensionColumns || config.hideNullDims || false
 
     this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
@@ -358,17 +366,19 @@ class VisPluginTableModel {
     this.addDimensions(queryResponse, col_idx)
     this.addMeasures(queryResponse, col_idx)
 
-    const parsedDepth = parseInt(this.addSubtotalDepth, 10);
-    this.addSubtotalDepth = this.addSubtotalDepth === '(all)'
-      ? '(all)'
-      : Math.min(Math.max(1, isNaN(parsedDepth) ? this.dimensions.length - 1 : parsedDepth), this.dimensions.length - 1);
-
     this.checkVarianceCalculations()
     if (this.useIndexColumn) { this.addIndexColumn(queryResponse) }
     if (this.hasSubtotals) { this.checkSubtotalsData(queryResponse) }
 
     this.addRows(lookerData)
+    this.hideNullDimensionColumns()
     this.addColumnSeries()
+
+    var activeDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide');
+    const parsedDepth = parseInt(this.addSubtotalDepth, 10);
+    this.addSubtotalDepth = this.addSubtotalDepth === '(all)'
+      ? '(all)'
+      : Math.min(Math.max(1, isNaN(parsedDepth) ? activeDims.length - 1 : parsedDepth), Math.max(1, activeDims.length - 1));
 
     if (this.hasTotals) { this.buildTotals(queryResponse) }
     if (this.spanRows) { this.setRowSpans() }
@@ -996,6 +1006,85 @@ class VisPluginTableModel {
     })
   }
 
+  hideNullDimensionColumns() {
+    if (!this.hideNullDimensionCols) {
+      return
+    }
+
+    this.dimensions.forEach(dimension => {
+      var hasLineItems = false
+      var allNull = true
+      for (var i = 0; i < this.data.length; i++) {
+        var row = this.data[i]
+        if (row.type === 'line_item') {
+          hasLineItems = true
+          var cell = row.data[dimension.name]
+          if (cell) {
+            var val = cell.value
+            if (val !== null && val !== undefined) {
+              if (typeof val === 'string' && val.trim() === '') {
+                // whitespace or empty string is considered null
+              } else {
+                allNull = false
+                break
+              }
+            }
+          }
+        }
+      }
+
+      if (hasLineItems && allNull) {
+        dimension.isNull = true
+        dimension.hide = true
+        var col = this.columns.find(c => c.id === dimension.name)
+        if (col) {
+          col.hide = true
+        }
+      }
+    })
+
+    for (var i = 0; i < this.dimensions.length; i++) {
+      var dimension = this.dimensions[i]
+      if (!dimension.hide) {
+        this.firstVisibleDimension = dimension.name
+        break
+      }
+    }
+
+    if (this.subtotalStyle === 'collapsed') {
+      var nonNullDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide')
+      var depthLimit = (!this.subtotalDepth || this.subtotalDepth === '(all)')
+        ? nonNullDims.length
+        : (parseInt(this.subtotalDepth, 10) || nonNullDims.length);
+
+      nonNullDims.forEach((dim, idx) => {
+        if (idx > 0 && idx < depthLimit) {
+          dim.hide = true
+          var col = this.columns.find(c => c.id === dim.name)
+          if (col) col.hide = true
+        } else if (idx >= depthLimit) {
+          dim.hide = false
+          var col = this.columns.find(c => c.id === dim.name)
+          if (col) col.hide = false
+        }
+      })
+    }
+
+    if (this.useIndexColumn) {
+      var nonNullDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide' && d.name !== INDEX_COLUMN)
+      var last_dim = nonNullDims.length > 0 ? nonNullDims[nonNullDims.length - 1].name : this.dimensions[this.dimensions.length - 1].name
+      for (var i = 0; i < this.data.length; i++) {
+        var row = this.data[i]
+        if (row.type === 'line_item' && row.data[last_dim] && row.data[INDEX_COLUMN]) {
+          var sourceCell = row.data[last_dim]
+          row.data[INDEX_COLUMN].value = sourceCell.value
+          row.data[INDEX_COLUMN].rendered = sourceCell.rendered
+          row.data[INDEX_COLUMN].html = sourceCell.html
+        }
+      }
+    }
+  }
+
   /**
    * Creates the index column, a "for display only" column when the set of dimensions is reduced to
    * a single column for reporting purposes.
@@ -1136,10 +1225,15 @@ class VisPluginTableModel {
 
       if (this.subtotalStyle === 'collapsed') {
         row.dimensionValues = this.dimensions.map(dimension => row.data[dimension.name]?.value)
+        row.originalDimensionValues = {}
+        this.dimensions.forEach(dim => {
+          row.originalDimensionValues[dim.name] = row.data[dim.name]?.value
+        })
+        const nonNullDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide')
         const depthLimit = (!this.subtotalDepth || this.subtotalDepth === '(all)')
-          ? this.dimensions.length
-          : (parseInt(this.subtotalDepth, 10) || this.dimensions.length);
-        const lastCollapsedDim = this.dimensions[depthLimit - 1]
+          ? nonNullDims.length
+          : (parseInt(this.subtotalDepth, 10) || nonNullDims.length);
+        const lastCollapsedDim = nonNullDims[depthLimit - 1]
         if (lastCollapsedDim && row.data[lastCollapsedDim.name]) {
           const leafValue = row.data[lastCollapsedDim.name].value
           const leafRendered = row.data[lastCollapsedDim.name].rendered
@@ -1466,9 +1560,10 @@ class VisPluginTableModel {
    */
   addSubTotals () { 
     const dimColspans = this.getDimensionColspans();
+    var activeDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide');
     var depths = this.addSubtotalDepth === '(all)'
-                 ? Array.from({length: this.dimensions.length - 1}, (_, i) => i + 1)
-                 : [this.addSubtotalDepth]
+                 ? Array.from({length: Math.max(0, activeDims.length - 1)}, (_, i) => i + 1)
+                 : (activeDims.length > 1 ? [Math.min(parseInt(this.addSubtotalDepth, 10) || 1, activeDims.length - 1)] : []);
 
     // Initialize row.sort to handle multiple subtotal depths
     this.data.forEach((row, i) => {
@@ -1493,8 +1588,10 @@ class VisPluginTableModel {
         if (row.type === 'line_item') {
           var group = []
           for (var g = 0; g < depth; g++) {
-            var dim = this.dimensions[g].name
-            var dimVal = (row.dimensionValues && row.dimensionValues[g] !== undefined) ? row.dimensionValues[g] : row.data[dim]?.value
+            var dim = activeDims[g].name
+            var dimVal = (row.originalDimensionValues && row.originalDimensionValues[dim] !== undefined)
+              ? row.originalDimensionValues[dim]
+              : row.data[dim]?.value
             group.push(dimVal)
           }
           var groupKey = group.join('|')
