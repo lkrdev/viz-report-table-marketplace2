@@ -303,10 +303,11 @@ class Column {
           if (headingOverride && headingOverride.trim() !== '') {
             label = headingOverride
           } else {
+            const visibleDims = this.vis.dimensions.filter(d => !d.isNull && !this.vis.config['hide|' + d.name] && this.vis.config['style|' + d.name] !== 'hide');
             const depthLimit = (!this.vis.subtotalDepth || this.vis.subtotalDepth === '(all)') 
-              ? this.vis.dimensions.length 
-              : (parseInt(this.vis.subtotalDepth, 10) || this.vis.dimensions.length);
-            const collapsedDims = this.vis.dimensions.slice(0, depthLimit);
+              ? visibleDims.length 
+              : (parseInt(this.vis.subtotalDepth, 10) || visibleDims.length);
+            const collapsedDims = visibleDims.slice(0, depthLimit);
             label = collapsedDims.map(d => this.vis.useShortName ? (d.short_name || d.label) : d.label).join(' / ');
           }
         }

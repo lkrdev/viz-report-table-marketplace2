@@ -1,38 +1,36 @@
 # Report Table for Looker
 
-A table dedicated to single-page, enterprise summary reports. Useful for PDF exports, report packs, finance reporting, etc. Does not do multi-page tables and lists. Does look good for your year-on-year analysis. Originally created by [Jon Walls](https://github.com/ContrastingSounds/vis-report_table).
+A table visualization for single-page summary reports in Looker. Built for PDF exports, report packs, and financial reporting. Originally created by [Jon Walls](https://github.com/ContrastingSounds/vis-report_table).
 
 ![Example Report](assets/marketplace_image.png)
 
 ## Features
 
 - Quick variance calculations
-- Add subtotals (including column subtotals for tables with two levels of pivot)
+- Row and column subtotals (including two pivot levels)
+  - Uses Looker query subtotals when available, or calculates them on the client
+- Header row for non-pivoted tables
+- Column reordering by pivot value or measure
+  - Drag and drop column reordering on flat tables
+- Dimension transposition
+- Red and black conditional formatting
+- Subtotal formatting for highlighting transposed measure rows
+- Custom CSS themes
+- LookML tags for default abbreviations and headers
+- Single dimension value reduction for financial reports
+- Drill-to-detail support
 
-  - Subtotals taken from Looker subtotals if available, otherwise performed as front-end calculation
-- Add a header row to non-pivoted tables
-- Organise measure columns by pivot value, or by measure
+## Recent updates
 
-  - Flat tables (i.e. no pivots) can be organised by drag'n'drop
-- Transpose (any number of dimensions)
-- Easy red/black conditional format
-- "Subtotal" format e.g. for highlighting transposed rows of measures
-- Themes, including ability to test custom themes using your own css file
-- Use LookML tags to give default abbreviations to popular fields
-- Reduce to a single dimension value for financial-style reporting
-- Drill-to-detail 
-
-## Recent Updates
-
-- Added Collapsed Subtotals mode (`subtotalStyle: 'collapsed'`) with interactive expand/collapse row toggles (`arrowStyle`), single-column hierarchy indentation, and automatic header label merging.
-- Added a "Subtotals on Top" option to position row subtotals above line items at the top of their respective groups.
-- Added an option to freeze the first X columns during horizontal scrolling (fully compatible with transposed tables).
-- Added support for dynamic field labels in Looker (such as LookML's `label_from_parameter` or Liquid conditional logic).
-
+- Added collapsed subtotals (`subtotalStyle: 'collapsed'`) with interactive expand and collapse row toggles (`arrowStyle`), hierarchy indentation, and combined header labels.
+- Added a "Subtotals on Top" setting to render row subtotals above line items.
+- Added an option to freeze the first X columns during horizontal scrolling.
+- Added support for dynamic field labels in Looker (`label_from_parameter` and Liquid conditional logic).
+- Added a "Hide Null Dimension Columns" option to omit completely null dimension columns and suppress redundant subtotal rows for inactive hierarchy levels.
 
 ## Installation
 
-To install this visualization in your Looker instance, add the following `visualization` parameter to your project's `manifest.lkml` file:
+To install this visualization in your Looker instance, add the `visualization` parameter to your project `manifest.lkml` file:
 
 ```lookml
 visualization: {
@@ -42,32 +40,29 @@ visualization: {
 }
 ```
 
-For more details on installing custom visualizations in a project with `manifest.lkml` or globally via the Admin panel, refer to the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/developing-custom-visualizations) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-visualizations).
+For more details on custom visualizations in Looker, see the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/developing-custom-visualizations) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-visualizations).
 
+## Standalone usage outside Looker
 
-## Standalone Usage Outside Looker
+You can also use this visualization independently in non-Looker web apps by embedding the compiled `report_table.js` script and calling `window.looker.table()`.
 
-You can also use this visualization independently in any non-Looker web app by embedding the compiled `report_table.js` script and calling `window.looker.table()`.
-
-For complete integration instructions, method signatures, and payload data formats, see [standalone.md](standalone.md).
-
-
+For integration details, method signatures, and payload data formats, see [standalone.md](standalone.md).
 
 ## Examples
 
-*Drag'n'drop columns for flat tables*
+*Drag and drop columns for flat tables*
 
-![Drag'n'drop columns for flat tables](assets/report_table_01_drag_and_drop.gif)
+![Drag and drop columns for flat tables](assets/report_table_01_drag_and_drop.gif)
 
 *Tags in LookML for consistent headers and abbreviations*
 
 ![Tags in LookML for consistent headers and abbreviations](assets/report_table_02_auto_headers_and_abbreviations.gif)
 
-*Subtotals and "show last dimension only"*
+*Subtotals and show last dimension only*
 
 ![Subtotals and last field only](assets/report_table_03_subtotals_and_last_field_only.gif)
 
-*Sort by Pivot or Measure*
+*Sort by pivot or measure*
 
 ![Sort by Pivot or Measure](assets/report_table_04_sort_by_pivot_or_measure.gif)
 
@@ -79,67 +74,107 @@ For complete integration instructions, method signatures, and payload data forma
 
 ![Even width columns or autolayout](assets/report_table_06_even_width_or_auto_layout.gif)
 
-*Transposing and PnL style reports*
+*Transposing and financial reports*
 
 ![Transposing and PnL style reports](assets/report_table_07_PnL_transpose_theme.gif)
 
+## Collapsed columns and subtotals
 
-## Collapsed Columns & Subtotals
-
-When analyzing multi-level hierarchies (such as Country > State > Category), standard tables often display redundant repeated columns. With **Collapsed Subtotals**, multiple dimension columns are collapsed into a single hierarchical column with visual indentation and interactive expand/collapse controls.
+When working with multi-level hierarchies (such as Country > State > Category), standard tables often display repeated columns. With collapsed subtotals, multiple dimension columns collapse into a single hierarchical column with visual indentation and expand/collapse controls.
 
 ![Collapsed Columns and Subtotals](assets/collapsed_columns.png)
 
-### Configuration Options
+### Configuration options
 
-- **Subtotal Style**:
+- Subtotal Style:
   - `Simple`: Standard multi-column layout with subtotal rows.
-  - `Collapsed`: Collapses hierarchical dimension columns into a single dimension column with indentation levels (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and automatically combines column headers (e.g. `Country / State / Category`).
-- **Arrow Style**:
+  - `Collapsed`: Collapses dimension columns into a single column with indentation levels (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and combines column headers (such as `Country / State / Category`).
+- Arrow Style:
   - `Arrows`: Displays `▲` / `▼` toggle icons.
   - `+/-`: Displays `[-]` / `[+]` toggle buttons.
-- **Start Collapsed**:
-  - When enabled, automatically collapses subtotal groups on initial render. Users can click any row toggle to expand or collapse child groups interactively.
+- Start Collapsed:
+  - When enabled, collapses subtotal groups on initial render. Users can click any row toggle to expand or collapse child groups.
 
+## Dynamic hierarchies and null dimension suppression
+
+Dashboards often implement parameter-driven dynamic hierarchies (such as Level 1: Country, Level 2: Cluster, Level 3: Collection, Level 4: None, Level 5: None).
+
+LookML models typically implement this pattern with a parameter paired with dynamic dimension `label_from_parameter`:
+
+```lookml
+parameter: select_level_4 {
+  type: unquoted
+  allowed_value: { label: "Product Category" value: "category" }
+  allowed_value: { label: "Brand"            value: "brand" }
+  allowed_value: { label: "None"             value: "none" }
+  default_value: "none"
+}
+
+dimension: level_4 {
+  label_from_parameter: select_level_4
+  sql:
+    {% if select_level_4._parameter_value == 'category' %}
+      ${products.category}
+    {% elsif select_level_4._parameter_value == 'brand' %}
+      ${products.brand}
+    {% else %}
+      NULL
+    {% endif %} ;;
+}
+```
+
+When users select "None", the column header dynamically updates to "None" via `label_from_parameter` and its SQL values evaluate to `NULL`, but the dimension field remains in the query payload.
+
+Without suppression, standard tables render empty `∅` columns with "None" headers and produce redundant subtotal rows that duplicate the leaf line items with trailing separators (such as `Country | Cluster | Collection | `).
+
+### Hide null dimension columns option
+
+Enabling **Hide Null Dimension Columns** (`hideNullDimensionCols` in the Table settings tab) adjusts the table dynamically:
+
+- Hides empty dimension columns where all dataset rows contain `null`, `undefined`, or empty string `""` values.
+- Suppresses redundant subtotals by calculating subtotal depths and groupings exclusively over active, non-null dimensions. For example, if levels 4 and 5 evaluate to `NULL` in a 5-dimension query, subtotals generate only for levels 1 (`Country`) and 2 (`Country | Cluster`), treating level 3 (`Collection`) as the line item tier.
+- Adapts single-index column mode (`indexColumn`) and collapsed subtotal mode (`subtotalStyle: 'collapsed'`) to the active hierarchy depth without requiring separate Looks or dashboards.
 
 ## Tagging fields in LookML
 
-A common reporting requirement is grouping fields under headings, and abbreviating column headers when many columns are present. This can be repetitive work! The Report Table vis will pick up tags in the LookML model, with the format `"vis-tools:SETTING:VALUE"`.
+Grouping fields under headings and abbreviating column headers can be repetitive. The Report Table visualization picks up tags in the LookML model using the format `"vis-tools:SETTING:VALUE"`.
 
-The current tag settings available are `heading`, `short_name`, `unit`.
+Available tag settings include `heading`, `short_name`, and `unit`:
 
-    measure: number_of_transactions {
-      tags: [
-        "vis-tools:heading:Transaction Value",
-        "vis-tools:short_name:Volume",
-        "vis-tools:unit:#"
-      ]
-      type: count
-      value_format_name: decimal_0
-      drill_fields: [transaction_details*]
-    }
+```lookml
+measure: number_of_transactions {
+  tags: [
+    "vis-tools:heading:Transaction Value",
+    "vis-tools:short_name:Volume",
+    "vis-tools:unit:#"
+  ]
+  type: count
+  value_format_name: decimal_0
+  drill_fields: [transaction_details*]
+}
+```
 
 ## Notes
 
-- Maximum of two pivot fields
-- Subtotals calculated at the front end are only for simple sums & averages
-  - e.g. no Count Distincts, running totals, measures of type "number" with arbitrary calculations
-  - The vis will use subtotals from the query response if available
-  - The tooltip will alert users to "estimated" numbers
+- Maximum of two pivot fields.
+- Subtotals calculated on the client handle simple sums and averages.
+  - Count distincts, running totals, and custom table calculations rely on Looker query subtotals.
+  - The visualization uses subtotals from the query response when available.
+  - Tooltips alert users to estimated calculations.
 
-## Using Custom CSS 
+## Using custom CSS
 
-You can apply your own custom styling by supplying a URL to a CSS file in the `Load custom CSS from:` option and selecting `Use custom theme` in the `Theme` tab.
+You can apply custom styling by providing a URL to a CSS file in the `Load custom CSS from:` setting and selecting `Use custom theme` in the `Theme` tab.
 
 ![Theme selector](/assets/custom_theme.png)
 
-Please use [this example template](src/theme_custom_template.css) to help you get started with your customization.
+See [src/theme_custom_template.css](src/theme_custom_template.css) for a starting template.
 
-### Custom Styling Examples
+### Custom styling examples
 
-#### 1. High-Contrast Dark Mode
+#### Dark mode
+
 ```css
-/* Invert table styling for sleek, premium dark dashboards */
 .reportTable {
   background-color: #1a1a1a;
   color: #f5f5f5;
@@ -158,7 +193,6 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
   background: #2d2d2d;
   color: #81c784;
 }
-/* Style the hover tooltip/popover for dark mode */
 #tooltip {
   background-color: #242424;
   border: 1px solid #444444;
@@ -168,25 +202,24 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 }
 ```
 
-#### 2. Corporate Card Premium Layout
+#### Card layout
+
 ```css
-/* Remove harsh borders and introduce subtle drop shadows and professional gradient headers */
 .reportTable {
-  font-family: 'Inter', Roboto, sans-serif;
+  font-family: "Inter", Roboto, sans-serif;
   border: none;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   border-radius: 6px;
   overflow: hidden;
 }
 .reportTable th {
-  background: linear-gradient(90deg, #1A365D 0%, #2B6CB0 100%);
+  background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 100%);
   color: #ffffff;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.5px;
 }
-/* Premium modern tooltip/popover styling */
 #tooltip {
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
@@ -199,9 +232,10 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 }
 ```
 
-#### 3. Grouped & Pivoted Column Targeting
+#### Grouped and pivoted column targeting
+
 ```css
-/* Style alternating grouped/pivoted column groups (e.g. QTD vs YTD) */
+/* Alternating pivot groups (such as QTD vs YTD) */
 #reportTable td.pivot-group-even,
 #reportTable th.pivot-group-even {
   background-color: #ececec;
@@ -211,24 +245,25 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
   background-color: #ffffff;
 }
 
-/* Or target a specific pivot group index directly (e.g., pivot group 0) */
+/* Target a specific pivot group index directly */
 #reportTable .pivot-group-0 {
-  border-left: 2px solid #006B9B;
+  border-left: 2px solid #006b9b;
 }
 ```
 
-#### 4. Targeting the Last X Rows
+#### Targeting the last rows
+
 ```css
-/* Highlight the last 4 rows in the table (e.g. summary / grand total rows) */
-#reportTable tbody tr:nth-last-child(-n+4) td {
+/* Highlight the last 4 rows (such as summary or grand total rows) */
+#reportTable tbody tr:nth-last-child(-n + 4) td {
   background-color: #f0f0f0 !important;
   font-weight: bold;
 }
 ```
 
-#### 5. Alternating Row Shading (Zebra Striping)
+#### Alternating row shading
+
 ```css
-/* Apply alternating row backgrounds to body rows */
 #reportTable tbody tr:nth-child(even) td {
   background-color: #f8f9fa;
 }
@@ -237,89 +272,64 @@ Please use [this example template](src/theme_custom_template.css) to help you ge
 }
 ```
 
-#### 6. Top-Aligning Table Cell Content
+#### Top-aligning table cell content
+
 ```css
-/* Align table header and data cell text to the top across all cells */
 .reportTable th,
 .reportTable td {
   vertical-align: top;
 }
 ```
 
-#### 7. Targeting Flipped Subtotals (Subtotals on Top)
+#### Targeting flipped subtotals
 
-> [!NOTE]
-> When the **Subtotals on Top** option is enabled, `.subtotal-top` and `.subtotals-on-top` classes are automatically applied to `#reportTable`, subtotal rows (`<tr>`), and subtotal cells (`<td>`).
+When the **Subtotals on Top** option is enabled, `.subtotal-top` and `.subtotals-on-top` classes are applied to `#reportTable`, subtotal rows (`<tr>`), and subtotal cells (`<td>`).
 
 ```css
-/* Style flipped subtotal rows specifically when "Subtotals on Top" is enabled */
 #reportTable tr.subtotal-top td {
   background-color: #e3f2fd !important;
   font-weight: bold;
 }
 ```
 
+### Hosting custom CSS
 
-### Hosting Your Custom CSS Simple & Free
+To load external CSS into Looker, the stylesheet must be served over HTTPS with CORS headers (`Access-Control-Allow-Origin: *`) and a `Content-Type: text/css` header.
 
-To load external CSS into Looker, the stylesheet must be served over HTTPS with permissive **CORS** (`Access-Control-Allow-Origin: *`) and a `Content-Type: text/css` header. 
+Direct links to raw GitHub files (such as `raw.githubusercontent.com`) fail because GitHub sends an `X-Content-Type-Options: nosniff` header with a `text/plain` MIME type. Pass the link through a proxy service such as jsDelivr or Githack, or host the file on Google Cloud Storage with public read access and CORS enabled.
 
-> [!WARNING]
-> **Raw GitHub/Gist Links Will Fail**: Direct links like `https://gist.githubusercontent.com/...` fail because GitHub enforces `X-Content-Type-Options: nosniff` with a `text/plain` MIME type. You **must** pass the link through a proxy like Githack or jsDelivr.
+## Feedback and contributions
 
-Here are the most reliable ways to host your CSS instantly:
+To report an issue or suggest an improvement, please submit a request at help.looker.com.
 
-1. **Githack ([raw.githack.com](https://raw.githack.com/)) for GitHub & Gists**
-   * **For a Gist**: Create a free [GitHub Gist](https://gist.github.com/) with your `.css` file. Copy the raw URL (`https://gist.githubusercontent.com/...`) and paste it into [raw.githack.com](https://raw.githack.com/) (which converts it to `gist.githack.com/...`).
-   * **For a GitHub Repo**: Commit your `.css` file to any public GitHub repository. Copy its raw URL (`https://raw.githubusercontent.com/...`) and paste it into [raw.githack.com](https://raw.githack.com/) (which converts it to `raw.githack.com/...`).
+### Development quickstart
 
-2. **Google Cloud Storage (Enterprise Standard)**
-   * Upload your stylesheet to a public GCS bucket.
-   * Ensure `allUsers` has `Storage Object Viewer` access and configure your bucket's CORS policy to allow `*` origins. Link via `https://storage.googleapis.com/YOUR_BUCKET/theme.css`.
+1. Install dependencies:
 
+   ```bash
+   yarn install
+   ```
 
+2. Make changes to the source code under `/src`.
 
-## What if I find an error? Suggestions for improvements?
-Great! Marketplace content -- including visualizations -- were designed for continuous improvement through the help of the entire Looker community and we'd love your input. To report an error or improvement recommendation, please get in touch at help.looker.com to submit a request. Please be as detailed as possible in your explanation and we'll address it as quick as we can.
+3. Compile the bundle:
 
+   ```bash
+   yarn build
+   ```
 
-### Interested in extending the visualization for your own use case?
-#### Quickstart Dev Instructions
-1.  **Install Dependecies.**
+   Or run the file watcher during development:
 
-    Using yarn, install all dependencies
-    ```
-    yarn install
-    ```
-2. **Make changes to the source code**
+   ```bash
+   yarn watch
+   ```
 
-3.  **Compile your code**
+### Project structure
 
-    You need to bundle your code, let's run:
-    ```
-    yarn build
-    ```
-    Recommended: Webpack can detect changes and build automatically
-     ```
-    yarn watch
-    ```
-    Your compiled code can be found in this repo.
-
-**`./report_table.js`**: This visualization's minified distribution file. 
-
-**`LICENSE`**: Looker's Marketplace content License file.
-
-**`manifest.lkml`**: Looker's external dependencies configuration file. The visualization object is defined here.
-
-**`marketplace.json`**: A JSON file containing information the marketplace installer uses to set up this project.
-
-**`/src`**: This directory will contain all of the visualization's source code.
-
-**`/src/report_table.js`**: The main source code for the visualization.
-
-**`/node_modules`**: The directory where all of the modules of code that your project depends on (npm packages) are automatically installed.
-
-**`README.md`**: This! A text file containing useful reference information about this visualization.
-
-**`yarn.lock`**: [Yarn](https://yarnpkg.com/) is a package manager alternative to npm. This file serves essentially the same purpose as `package-lock.json`, just for a different package management system.
+- `./report_table.js`: Minified distribution file.
+- `manifest.lkml`: Looker external dependencies configuration file defining the visualization object.
+- `marketplace.json`: Looker Marketplace package configuration.
+- `src/`: Visualization source files.
+- `src/report_table.js`: Main entry point for the visualization.
+- `tests/`: Jest test suites.
 

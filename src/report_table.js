@@ -390,9 +390,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
             const fontBody = config.bodyFontSize + 'pt arial';
             let maxW = getTextWidth(headerLabel, fontHeader) + 30;
 
+            const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
             const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
-              ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
-              : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+              ? (activeDims.length || 1)
+              : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
             const maxDepth = Math.max(depthLimit - 1, 0);
 
             dataTable.data.forEach(row => {
@@ -564,7 +565,8 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
                 if (row.type === 'subtotal') {
                     depth = row.depthIndex !== undefined ? row.depthIndex : 0;
                 } else if (row.type === 'line_item') {
-                    depth = dataTable.dimensions ? Math.max(dataTable.dimensions.length - 1, 1) : 1;
+                    const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
+                    depth = activeDims.length ? Math.max(activeDims.length - 1, 1) : 1;
                 }
                 classes += ` subtotal-collapsed-${depth}`;
             }
@@ -678,9 +680,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
                 depth = parseInt(trNode.getAttribute('data-subtotal-depth'), 10) || 0
               }
             } else if (!d.cell_style.includes('total')) {
+              const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
               const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
-                ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
-                : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+                ? (activeDims.length || 1)
+                : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
               depth = Math.max(depthLimit - 1, 0);
             }
             return (depth * 16) + 'px'
@@ -712,9 +715,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
                 depth = parseInt(trNode.getAttribute('data-subtotal-depth'), 10) || 0
               }
             } else if (!d.cell_style.includes('total')) {
+              const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
               const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
-                ? (dataTable.dimensions ? dataTable.dimensions.length : 1)
-                : (parseInt(dataTable.subtotalDepth, 10) || (dataTable.dimensions ? dataTable.dimensions.length : 1));
+                ? (activeDims.length || 1)
+                : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
               depth = Math.max(depthLimit - 1, 0);
             }
             classes.push(`subtotal-collapsed-${depth}`)
