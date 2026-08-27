@@ -1300,16 +1300,16 @@ class VisPluginTableModel {
     })
   }
 
-  getEffectiveFreezeColumns() {
+  getEffectiveFreezeColumns(forceOriginal = false) {
     const X = Number(this.config.freezeFirstColumns) || 0;
     if (X <= 0) return 0;
-    const allCols = this.transposeTable ? this.transposed_columns : this.columns;
+    const allCols = (!forceOriginal && this.transposeTable) ? this.transposed_columns : this.columns;
     if (!allCols || allCols.length === 0) return X;
     return allCols.slice(0, X).filter(c => !c.hide).length;
   }
 
   getDimensionColspans() {
-    const X = this.getEffectiveFreezeColumns();
+    const X = this.getEffectiveFreezeColumns(true);
     const visibleDimIds = [];
     if (this.useIndexColumn) {
       visibleDimIds.push(INDEX_COLUMN);
