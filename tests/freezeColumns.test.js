@@ -161,4 +161,62 @@ describe('Freeze first X columns option and functionality', () => {
     // Verify it triggers updateConfig with empty clientSorts
     expect(triggerSpy).toHaveBeenCalledWith('updateConfig', [{ clientSorts: [] }]);
   });
+
+  it('adjusts frozen column count when null dimension columns are hidden so metrics are not frozen', async () => {
+    const { metadata } = parseJsonBi(fixtures.history_created_month);
+    metadata.fields.dimension_like = [
+      { name: 'country', label: 'Country', type: 'string', category: 'dimension' },
+      { name: 'cluster', label: 'Cluster', type: 'string', category: 'dimension' },
+      { name: 'collection', label: 'Collection', type: 'string', category: 'dimension' },
+      { name: 'level4', label: 'Level 4', type: 'string', category: 'dimension' },
+      { name: 'level5', label: 'Level 5', type: 'string', category: 'dimension' }
+    ];
+    metadata.fields.measure_like = [
+      { name: 'revenue', label: 'Revenue', type: 'number', category: 'measure' },
+      { name: 'cost', label: 'Cost', type: 'number', category: 'measure' }
+    ];
+
+    const rows = [
+      {
+        country: { value: 'MEXICO' },
+        cluster: { value: 'LATAM' },
+        collection: { value: "LEVI'S MAINLINE" },
+        level4: { value: null },
+        level5: { value: null },
+        revenue: { value: 5000 },
+        cost: { value: 3000 }
+      }
+    ];
+
+    const model = new VisPluginTableModel(rows, metadata, {
+      freezeFirstColumns: 5,
+      hideNullDimensionCols: true
+    });
+
+    // There were 5 original dimensions; 2 are null, so only 3 visible dimensions should be frozen
+    expect(model.getEffectiveFreezeColumns()).toBe(3);
+
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    addedVis.create(element, {});
+
+    addedVis.updateAsync(rows, element, {
+      freezeFirstColumns: 5,
+      hideNullDimensionCols: true
+    }, metadata, {}, () => {});
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    const firstBodyRow = document.querySelector('#reportTable tbody tr');
+    const cells = firstBodyRow.querySelectorAll('td');
+
+    // 3 visible dimension cells should be sticky
+    expect(cells[0].classList.contains('sticky-col')).toBe(true); // Country
+    expect(cells[1].classList.contains('sticky-col')).toBe(true); // Cluster
+    expect(cells[2].classList.contains('sticky-col')).toBe(true); // Collection
+
+    // Measure / metric cells should NOT be sticky
+    expect(cells[3].classList.contains('sticky-col')).toBe(false); // Revenue
+    expect(cells[4].classList.contains('sticky-col')).toBe(false); // Cost
+  });
 });

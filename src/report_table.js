@@ -154,7 +154,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   }
 
   function applyStickyStyles() {
-    const X = Number(config.freezeFirstColumns) || 0;
+    const X = dataTable.getEffectiveFreezeColumns();
     const freezeHeaders = config.freezeTableHeaders;
 
     const visContainer = element.querySelector('#visContainer');
@@ -208,7 +208,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
   }
 
   function applyStickyColumns() {
-    const X = Number(config.freezeFirstColumns) || 0;
+    const X = dataTable.getEffectiveFreezeColumns();
     if (X > 0) {
       const visContainer = element.querySelector('#visContainer');
       if (!visContainer) return;
