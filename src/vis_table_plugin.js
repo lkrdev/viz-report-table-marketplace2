@@ -1145,7 +1145,7 @@ class VisPluginTableModel {
         var groups = ['Subtotal']
         var othersGroups = ['Subtotal']
         visSubtotal['$$$__grouping__$$$'].forEach(group => {
-          var val = lookerSubtotal[group] ? lookerSubtotal[group].value : null
+          var val = lookerSubtotal[group]?.value ?? null
           groups.push(val)
           othersGroups.push(val === null || val === '' ? 'Others' : val)
         })
@@ -1154,7 +1154,7 @@ class VisPluginTableModel {
 
         this.columns.forEach(column => {
           visSubtotal.data[column.id] = (column.pivoted || column.isRowTotal)
-            ? (lookerSubtotal[column.modelField?.name] ? lookerSubtotal[column.modelField.name][column.pivot_key] : undefined)
+            ? (column.modelField?.name && lookerSubtotal[column.modelField.name] ? lookerSubtotal[column.modelField.name][column.pivot_key] : undefined)
             : lookerSubtotal[column.id]
           var cell = visSubtotal.data[column.id]
 
@@ -1173,10 +1173,10 @@ class VisPluginTableModel {
 
             var reportInSetting = this.config['reportIn|' + column.modelField?.name]
             if (typeof reportInSetting !== 'undefined' && reportInSetting !== '1') {
-              var unit = this.config.useUnit && column.modelField?.unit !== '#' ? column.modelField.unit : ''
+              var unit = this.config.useUnit && column.modelField?.unit !== '#' ? (column.modelField?.unit || '') : ''
               cell.html = null
-              cell.value = Math.round(cell.value / parseInt(reportInSetting))
-              cell.rendered = column.modelField?.value_format === '' ? cell.value.toString() : unit + SSF.format(column.modelField?.value_format, cell.value)
+              cell.value = Math.round(cell.value / parseInt(reportInSetting, 10))
+              cell.rendered = column.modelField?.value_format === '' ? cell.value.toString() : unit + SSF.format(column.modelField?.value_format || '', cell.value)
             }
           }            
         })
