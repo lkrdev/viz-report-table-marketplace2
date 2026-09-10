@@ -377,6 +377,250 @@ describe('Subtotals option bug reproduction', () => {
   });
 });
 
+describe('Server subtotals ingestion and percentage fallback', () => {
+  const baseMetadata = {
+    fields: {
+      dimensions: [
+        { name: 'cluster', type: 'string', label: 'Cluster' },
+        { name: 'country', type: 'string', label: 'Country' }
+      ],
+      dimension_like: [
+        { name: 'cluster', type: 'string', label: 'Cluster' },
+        { name: 'country', type: 'string', label: 'Country' }
+      ],
+      measures: [
+        { name: 'sales', type: 'number', label: 'Sales', is_numeric: true },
+        { name: 'growth_pct', type: 'number', label: 'Growth %', is_numeric: true, value_format: '0.0%' }
+      ],
+      measure_like: [
+        { name: 'sales', type: 'number', label: 'Sales', is_numeric: true },
+        { name: 'growth_pct', type: 'number', label: 'Growth %', is_numeric: true, value_format: '0.0%' }
+      ],
+      pivots: []
+    },
+    sorts: []
+  };
+
+  const sampleRows = [
+    {
+      cluster: { value: 'LATAM' },
+      country: { value: 'Brazil' },
+      sales: { value: 100 },
+      growth_pct: { value: 0.1, rendered: '10.0%' }
+    },
+    {
+      cluster: { value: 'LATAM' },
+      country: { value: 'Chile' },
+      sales: { value: 200 },
+      growth_pct: { value: 0.2, rendered: '20.0%' }
+    },
+    {
+      cluster: { value: 'USCA' },
+      country: { value: 'USA' },
+      sales: { value: 500 },
+      growth_pct: { value: -0.126, rendered: '-12.6%' }
+    },
+    {
+      cluster: { value: 'USCA' },
+      country: { value: 'Canada' },
+      sales: { value: 50 },
+      growth_pct: { value: -0.003, rendered: '-0.3%' }
+    }
+  ];
+
+  it('should ingest server subtotals across depths when subtotalDepth is (all)', () => {
+    const queryResponseWithSubtotals = {
+      ...baseMetadata,
+      has_subtotals: true,
+      subtotal_sets: [['cluster']],
+      subtotals_data: {
+        '1': [
+          {
+            cluster: { value: 'LATAM' },
+            country: { value: null },
+            sales: { value: 8780737, rendered: '$8,780,737' },
+            growth_pct: { value: 0.158, rendered: '15.8%' },
+            '$$$__grouping__$$$': ['cluster']
+          },
+          {
+            cluster: { value: 'USCA' },
+            country: { value: null },
+            sales: { value: 49569605, rendered: '$49,569,605' },
+            growth_pct: { value: -0.120, rendered: '-12.0%' },
+            '$$$__grouping__$$$': ['cluster']
+          }
+        ]
+      }
+    };
+
+    const model = new VisPluginTableModel(sampleRows, queryResponseWithSubtotals, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)'
+    });
+
+    expect(Object.keys(model.subtotals_data).length).toBeGreaterThan(0);
+    const subtotalRows = model.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBe(2);
+
+    const latamSubtotal = subtotalRows.find(r => r.id === 'Subtotal|LATAM');
+    expect(latamSubtotal).toBeDefined();
+    expect(latamSubtotal.data.sales.value).toBe(8780737);
+    expect(latamSubtotal.data.sales.rendered).toBe('$8,780,737');
+    expect(latamSubtotal.data.growth_pct.value).toBe(0.158);
+    expect(latamSubtotal.data.growth_pct.rendered).toBe('15.8%');
+
+    const uscaSubtotal = subtotalRows.find(r => r.id === 'Subtotal|USCA');
+    expect(uscaSubtotal).toBeDefined();
+    expect(uscaSubtotal.data.growth_pct.value).toBe(-0.120);
+    expect(uscaSubtotal.data.growth_pct.rendered).toBe('-12.0%');
+  });
+
+  it('should correctly match null dimension subtotals (Subtotal|Others)', () => {
+    const rowsWithNull = [
+      {
+        cluster: { value: null },
+        country: { value: 'Brazil' },
+        sales: { value: 50 },
+        growth_pct: { value: 0.05, rendered: '5.0%' }
+      }
+    ];
+
+    const queryResponseWithNullSubtotal = {
+      ...baseMetadata,
+      has_subtotals: true,
+      subtotal_sets: [['cluster']],
+      subtotals_data: {
+        '1': [
+          {
+            cluster: { value: null },
+            country: { value: null },
+            sales: { value: 5000, rendered: '$5,000' },
+            growth_pct: { value: 0.25, rendered: '25.0%' },
+            '$$$__grouping__$$$': ['cluster']
+          }
+        ]
+      }
+    };
+
+    const model = new VisPluginTableModel(rowsWithNull, queryResponseWithNullSubtotal, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)'
+    });
+
+    const subtotalRows = model.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBe(1);
+    const nullSubtotal = subtotalRows[0];
+    expect(nullSubtotal.id).toBe('Subtotal|Others');
+    expect(nullSubtotal.data.sales.value).toBe(5000);
+    expect(nullSubtotal.data.growth_pct.rendered).toBe('25.0%');
+  });
+
+  it('should suppress summing percentages and ratios in client-side fallback', () => {
+    // No subtotals_data provided -> triggers client-side aggregation fallback
+    const queryResponseWithoutSubtotals = {
+      ...baseMetadata
+    };
+
+    const model = new VisPluginTableModel(sampleRows, queryResponseWithoutSubtotals, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)'
+    });
+
+    const subtotalRows = model.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBe(2);
+
+    const latamSubtotal = subtotalRows.find(r => r.id === 'Subtotal|LATAM');
+    expect(latamSubtotal).toBeDefined();
+    // Non-percentage measure should still be summed (100 + 200 = 300)
+    expect(latamSubtotal.data.sales.value).toBe(300);
+    // Percentage measure must NOT be summed (should be null / empty string)
+    expect(latamSubtotal.data.growth_pct.value).toBeNull();
+    expect(latamSubtotal.data.growth_pct.rendered).toBe('');
+  });
+
+  it('should ingest multiple subtotal depths when subtotalDepth is (all)', () => {
+    const multiDepthMetadata = {
+      fields: {
+        dimensions: [
+          { name: 'region', type: 'string', label: 'Region' },
+          { name: 'country', type: 'string', label: 'Country' },
+          { name: 'city', type: 'string', label: 'City' }
+        ],
+        dimension_like: [
+          { name: 'region', type: 'string', label: 'Region' },
+          { name: 'country', type: 'string', label: 'Country' },
+          { name: 'city', type: 'string', label: 'City' }
+        ],
+        measures: [
+          { name: 'sales', type: 'number', label: 'Sales', is_numeric: true }
+        ],
+        measure_like: [
+          { name: 'sales', type: 'number', label: 'Sales', is_numeric: true }
+        ],
+        pivots: []
+      },
+      sorts: []
+    };
+
+    const multiDepthRows = [
+      { region: { value: 'EMEA' }, country: { value: 'UK' }, city: { value: 'London' }, sales: { value: 10 } },
+      { region: { value: 'EMEA' }, country: { value: 'UK' }, city: { value: 'Manchester' }, sales: { value: 20 } },
+      { region: { value: 'EMEA' }, country: { value: 'France' }, city: { value: 'Paris' }, sales: { value: 30 } }
+    ];
+
+    const queryResponse = {
+      ...multiDepthMetadata,
+      has_subtotals: true,
+      subtotal_sets: [['region'], ['region', 'country']],
+      subtotals_data: {
+        '1': [
+          {
+            region: { value: 'EMEA' },
+            country: { value: null },
+            city: { value: null },
+            sales: { value: 60, rendered: '$60' },
+            '$$$__grouping__$$$': ['region']
+          }
+        ],
+        '2': [
+          {
+            region: { value: 'EMEA' },
+            country: { value: 'UK' },
+            city: { value: null },
+            sales: { value: 30, rendered: '$30' },
+            '$$$__grouping__$$$': ['region', 'country']
+          },
+          {
+            region: { value: 'EMEA' },
+            country: { value: 'France' },
+            city: { value: null },
+            sales: { value: 30, rendered: '$30' },
+            '$$$__grouping__$$$': ['region', 'country']
+          }
+        ]
+      }
+    };
+
+    const modelAll = new VisPluginTableModel(multiDepthRows, queryResponse, {
+      rowSubtotals: true,
+      subtotalDepth: '(all)'
+    });
+
+    const subtotalRows = modelAll.data.filter(r => r.type === 'subtotal');
+    expect(subtotalRows.length).toBe(3);
+
+    const emeaSubtotal = subtotalRows.find(r => r.id === 'Subtotal|EMEA');
+    expect(emeaSubtotal).toBeDefined();
+    expect(emeaSubtotal.data.sales.value).toBe(60);
+    expect(emeaSubtotal.data.sales.rendered).toBe('$60');
+
+    const ukSubtotal = subtotalRows.find(r => r.id === 'Subtotal|EMEA|UK');
+    expect(ukSubtotal).toBeDefined();
+    expect(ukSubtotal.data.sales.value).toBe(30);
+    expect(ukSubtotal.data.sales.rendered).toBe('$30');
+  });
+});
+
 
 
 

@@ -368,7 +368,6 @@ class VisPluginTableModel {
 
     this.checkVarianceCalculations()
     if (this.useIndexColumn) { this.addIndexColumn(queryResponse) }
-    if (this.hasSubtotals) { this.checkSubtotalsData(queryResponse) }
 
     this.addRows(lookerData)
     this.hideNullDimensionColumns()
@@ -380,6 +379,7 @@ class VisPluginTableModel {
       ? '(all)'
       : Math.min(Math.max(1, isNaN(parsedDepth) ? activeDims.length - 1 : parsedDepth), Math.max(1, activeDims.length - 1));
 
+    if (this.hasSubtotals) { this.checkSubtotalsData(queryResponse) }
     if (this.hasTotals) { this.buildTotals(queryResponse) }
     if (this.spanRows) { this.setRowSpans() }
     if (this.addRowSubtotals) { this.addSubTotals() }
@@ -1125,19 +1125,37 @@ class VisPluginTableModel {
    * @param {*} queryResponse 
    */
   checkSubtotalsData(queryResponse) {
-    if (typeof queryResponse.subtotals_data[this.addSubtotalDepth] !== 'undefined') {
-      queryResponse.subtotals_data[this.addSubtotalDepth].forEach(lookerSubtotal => {
+    if (!queryResponse || !queryResponse.subtotals_data) { return }
+
+    var depthsToProcess = (this.addSubtotalDepth === '(all)' || !this.addSubtotalDepth)
+      ? Object.keys(queryResponse.subtotals_data)
+      : [this.addSubtotalDepth.toString()]
+
+    depthsToProcess.forEach(depthKey => {
+      var subtotalRows = queryResponse.subtotals_data[depthKey]
+      if (!Array.isArray(subtotalRows)) { return }
+
+      subtotalRows.forEach(lookerSubtotal => {
         var visSubtotal = new Row('subtotal')
 
         visSubtotal['$$$__grouping__$$$'] = lookerSubtotal['$$$__grouping__$$$']
+          || (queryResponse.subtotal_sets && queryResponse.subtotal_sets[parseInt(depthKey, 10) - 1])
+          || this.dimensions.slice(0, parseInt(depthKey, 10)).map(d => d.name)
+
         var groups = ['Subtotal']
+        var othersGroups = ['Subtotal']
         visSubtotal['$$$__grouping__$$$'].forEach(group => {
-          groups.push(lookerSubtotal[group].value)
+          var val = lookerSubtotal[group] ? lookerSubtotal[group].value : null
+          groups.push(val)
+          othersGroups.push(val === null || val === '' ? 'Others' : val)
         })
         visSubtotal.id = groups.join('|')
+        var othersId = othersGroups.join('|')
 
         this.columns.forEach(column => {
-          visSubtotal.data[column.id] = (column.pivoted || column.isRowTotal) ? lookerSubtotal[column.modelField.name][column.pivot_key] : lookerSubtotal[column.id]
+          visSubtotal.data[column.id] = (column.pivoted || column.isRowTotal)
+            ? (lookerSubtotal[column.modelField?.name] ? lookerSubtotal[column.modelField.name][column.pivot_key] : undefined)
+            : lookerSubtotal[column.id]
           var cell = visSubtotal.data[column.id]
 
           if (typeof cell !== 'undefined') {
@@ -1146,25 +1164,26 @@ class VisPluginTableModel {
             } else {
               cell.cell_style = cell.cell_style.concat(['total', 'subtotal'])
             }
-            if (typeof column.modelField.style !== 'undefined') {
+            if (typeof column.modelField?.style !== 'undefined') {
               cell.cell_style = cell.cell_style.concat(column.modelField.style)
             }
             if (cell.value === null) {
               cell.rendered = ''
             }
 
-            var reportInSetting = this.config['reportIn|' + column.modelField.name]
+            var reportInSetting = this.config['reportIn|' + column.modelField?.name]
             if (typeof reportInSetting !== 'undefined' && reportInSetting !== '1') {
-              var unit = this.config.useUnit && column.modelField.unit !== '#' ? column.modelField.unit : ''
+              var unit = this.config.useUnit && column.modelField?.unit !== '#' ? column.modelField.unit : ''
               cell.html = null
               cell.value = Math.round(cell.value / parseInt(reportInSetting))
-              cell.rendered = column.modelField.value_format === '' ? cell.value.toString() : unit + SSF.format(column.modelField.value_format, cell.value)
+              cell.rendered = column.modelField?.value_format === '' ? cell.value.toString() : unit + SSF.format(column.modelField?.value_format, cell.value)
             }
           }            
         })
         this.subtotals_data[visSubtotal.id] = visSubtotal
+        this.subtotals_data[othersId] = visSubtotal
       })
-    }
+    })
   }
 
   /**
@@ -1660,7 +1679,7 @@ class VisPluginTableModel {
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'measure'] : ['total', 'subtotal', 'nonNumeric', 'measure']
           if (this.subtotalsOnTop) { cell_style.push('subtotal-top', 'subtotals-on-top') }
           var align = column.modelField.is_numeric ? 'right' : 'left'
-          if (Object.entries(this.subtotals_data).length > 0 && !subtotalRow.id.startsWith('Subtotal|Others')) { // if subtotals already provided in Looker's queryResponse
+          if (this.subtotals_data[subtotalRow.id]?.data[column.id]) { // if subtotals already provided in Looker's queryResponse
             var cell = new DataCell({ 
               ...subtotalRow.data[column.id], 
               ...this.subtotals_data[subtotalRow.id].data[column.id],
@@ -1696,6 +1715,18 @@ class VisPluginTableModel {
               rendered = ''
             } 
 
+            // suppress summing percentages/ratios in client fallback to avoid misleading aggregates
+            var isPercentageOrRatio = (
+              (column.modelField?.value_format && column.modelField.value_format.indexOf('%') > -1) ||
+              column.modelField?.unit === '%' ||
+              column.unit === '%' ||
+              ['percent', 'ratio', 'percent_of_total'].includes(column.modelField?.calculation_type)
+            )
+            if (isPercentageOrRatio && column.modelField?.calculation_type !== 'average') {
+              subtotal_value = null
+              rendered = ''
+            }
+
             var cell = new DataCell({
               value: subtotal_value,
               rendered: rendered,
@@ -1704,6 +1735,9 @@ class VisPluginTableModel {
               colid: column.id,
               rowid: subtotalRow.id
             })
+            if (isPercentageOrRatio && column.modelField?.calculation_type !== 'average') {
+              cell.rendered = ''
+            }
             subtotalRow.data[column.id] = cell
           }
         }
