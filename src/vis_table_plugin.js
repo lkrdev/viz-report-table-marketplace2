@@ -1147,7 +1147,7 @@ class VisPluginTableModel {
 
         this.columns.forEach(column => {
           visSubtotal.data[column.id] = (column.pivoted || column.isRowTotal)
-            ? lookerSubtotal[column.modelField?.name]?.[column.pivot_key]
+            ? (column.modelField?.name ? lookerSubtotal[column.modelField.name]?.[column.pivot_key] : undefined)
             : lookerSubtotal[column.id]
           var cell = visSubtotal.data[column.id]
 
