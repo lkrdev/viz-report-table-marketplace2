@@ -1142,19 +1142,12 @@ class VisPluginTableModel {
           || (queryResponse.subtotal_sets && queryResponse.subtotal_sets[parseInt(depthKey, 10) - 1])
           || this.dimensions.slice(0, parseInt(depthKey, 10)).map(d => d.name)
 
-        var groups = ['Subtotal']
-        var othersGroups = ['Subtotal']
-        visSubtotal['$$$__grouping__$$$'].forEach(group => {
-          var val = lookerSubtotal[group]?.value ?? null
-          groups.push(val)
-          othersGroups.push(val === null || val === '' ? 'Others' : val)
-        })
-        visSubtotal.id = groups.join('|')
-        var othersId = othersGroups.join('|')
+        var dims = visSubtotal['$$$__grouping__$$$'].map(group => lookerSubtotal[group]?.value).join('|')
+        visSubtotal.id = ['Subtotal', dims || 'Others'].join('|')
 
         this.columns.forEach(column => {
           visSubtotal.data[column.id] = (column.pivoted || column.isRowTotal)
-            ? (column.modelField?.name && lookerSubtotal[column.modelField.name] ? lookerSubtotal[column.modelField.name][column.pivot_key] : undefined)
+            ? lookerSubtotal[column.modelField?.name]?.[column.pivot_key]
             : lookerSubtotal[column.id]
           var cell = visSubtotal.data[column.id]
 
@@ -1181,7 +1174,6 @@ class VisPluginTableModel {
           }            
         })
         this.subtotals_data[visSubtotal.id] = visSubtotal
-        this.subtotals_data[othersId] = visSubtotal
       })
     })
   }
@@ -1717,15 +1709,11 @@ class VisPluginTableModel {
 
             // suppress summing percentages/ratios in client fallback to avoid misleading aggregates
             var isPercentageOrRatio = (
-              (column.modelField?.value_format && column.modelField.value_format.indexOf('%') > -1) ||
+              column.modelField?.value_format?.includes('%') ||
               column.modelField?.unit === '%' ||
               column.unit === '%' ||
               ['percent', 'ratio', 'percent_of_total'].includes(column.modelField?.calculation_type)
             )
-            if (isPercentageOrRatio && column.modelField?.calculation_type !== 'average') {
-              subtotal_value = null
-              rendered = ''
-            }
 
             var cell = new DataCell({
               value: subtotal_value,
@@ -1736,6 +1724,7 @@ class VisPluginTableModel {
               rowid: subtotalRow.id
             })
             if (isPercentageOrRatio && column.modelField?.calculation_type !== 'average') {
+              cell.value = null
               cell.rendered = ''
             }
             subtotalRow.data[column.id] = cell
