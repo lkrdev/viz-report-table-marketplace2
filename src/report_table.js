@@ -1,7 +1,10 @@
 import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, INDEX_COLUMN, RIGHT_OFFSET_BASE } from './constants'
-import * as d3 from './d3loader'
+import * as d3Selection from 'd3-selection'
+import { drag as d3Drag } from 'd3-drag'
 import { downloadTableAsExcel, getTableExcelDataUrl } from './download_link'
 import { VisPluginTableModel } from './vis_table_plugin'
+
+const d3 = { select: d3Selection.select, drag: d3Drag, get event() { return d3Selection.event } }
 
 
 const themes = {
@@ -12,11 +15,6 @@ const themes = {
   fixed: require('./layout_fixed.css'),
   auto: require('./layout_auto.css')
 }
-
-const BBOX_X_ADJUST = 10
-const BBOX_Y_ADJUST = 10
-
-const use_minicharts = false
 
 const removeStyles = function() {
   const links = document.getElementsByTagName('link')
@@ -807,139 +805,10 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
           event: event
         })
       })
-
-    if (use_minicharts) {
-      var barHeight = 16
-      var minicharts = table.selectAll('.cellSeries')
-            .append('svg')
-              .attr('height', d => barHeight)
-              .attr('width', '100%')
-            .append('g')
-              .attr('class', '.cellSeriesChart')
-            .selectAll('rect')
-            .data(d => {
-              values = []
-              for (var i = 0; i < d.value.series.keys.length; i++) {
-                values.push({
-                  idx: i,
-                  max: 10000,
-                  key: d.value.series.keys[i],
-                  value: d.value.series.values[i],
-                  type: d.value.series.types[i],
-                })
-              }
-              return values.filter(value => value.type === 'line_item')
-            }).enter()
-
-      var cellWidth = table.selectAll('.cellSeries')._groups[0][0].clientWidth
-      var barWidth = Math.floor( cellWidth / 10 )
-      // console.log('cellWidth', cellWidth)
-      // console.log('barHeight', barHeight)
-      // console.log('barWidth', barWidth)
-
-      minicharts.append('rect')
-        .style('fill', 'steelblue')
-        .attr('x', value => {
-          return value.idx * barWidth
-        })
-        .attr('y', value => barHeight - Math.floor(value.value / value.max * barHeight))
-        .attr('width', barWidth)
-        .attr('height', value => Math.floor(value.value / value.max * barHeight))
-    }
-}
-
-  const addOverlay = async function() {
-    var viewbox_width = document.getElementById('reportTable').clientWidth
-    var viewbox_height = document.getElementById('reportTable').clientHeight
-
-    var allRects = []
-    d3.selectAll('th')
-      .select(function(d, i) {
-        if (typeof d !== 'undefined') {
-          var bbox = this.getBoundingClientRect()
-        allRects.push({
-          index: i,
-          data: d,
-          x: bbox.x - BBOX_X_ADJUST, 
-          y: bbox.y - BBOX_Y_ADJUST, 
-          width: bbox.width,
-          height: bbox.height,
-          html: this.innerHTML,
-          class: this.className + ' rectElem animated',
-          fontSize: config.headerFontSize,
-          align: this.style.textAlign
-        })
-        }
-      })
-
-    d3.selectAll('td')
-    .select(function(d, i) {
-      if (typeof d !== 'undefined') {
-        var bbox = this.getBoundingClientRect()
-        allRects.push({
-          index: i,
-          data: d,
-          x: bbox.x - BBOX_X_ADJUST,
-          y: bbox.y - BBOX_Y_ADJUST,
-          width: bbox.width,
-          height: bbox.height,
-          html: this.innerHTML,
-          class: this.className + ' rectElem animated',
-          fontSize: config.bodyFontSize,
-          align: this.style.textAlign
-        })
-      }
-    })
-
-    var overlay = d3.select('#visSvg')
-      .attr('width', viewbox_width)
-      .attr('height', viewbox_height)
-      .selectAll('.rectElem')
-        .data(allRects, d => d.data.id)
-        .join(
-            enter => enter.append('div')
-                .attr('class', d => d.class)
-                .style('opacity', 0.2)
-                .style('position', 'absolute')
-                .style('left', d => d.x + 'px')
-                .style('top', d => -2000)
-                .style('width', d => d.width + 'px')
-                .style('height', d => d.height + 'px')
-                .style('font-size', d => d.fontSize + 'px')
-                .style('text-align', d => d.align)
-                .text(d => d.html)
-              .call(
-                enter => enter.transition().duration(1000)
-                .style('opacity', 1)  
-                .style('top', d => d.y + 'px')
-                ),
-            update => update
-              .call(
-                update => update.transition().duration(1000)
-                .attr('class', d => d.class)
-                .style('opacity', 1)
-                .style('left', d => d.x + 'px')
-                .style('top', d => d.y + 'px')
-                .style('width', d => d.width + 'px')
-                .style('height', d => d.height + 'px')
-                .style('font-size', d => d.fontSize + 'px')
-                .style('text-align', d => d.align)
-                .text(d => d.html)
-              ),
-            exit => exit
-              .call(
-                exit => exit.transition().duration(500)
-                  .style('opacity', 0)
-                  .remove()
-              )
-        )
   }
 
   const redraw = function() {
     d3.select('#visContainer').html('')
-    if (document.getElementById('visSvg')) {
-      d3.select('#visSvg').html('')
-    }
 
     return renderTable().then(() => {
     document.getElementById('reportTable').classList.add('reveal')
@@ -1106,14 +975,7 @@ const buildReportTable = function(config, dataTable, updateColumnOrder, updateCo
     
     applyStickyColumns();
     applyStickyHeaders();
-    if (config.customTheme === 'animate') {
-      document.getElementById('visSvg').classList.remove('hidden')
-      addOverlay()
-      // setTimeout(addOverlay(), 500)
-    } else {
-      document.getElementById('visSvg').classList.add('hidden')
-      document.getElementById('reportTable').style.opacity = 1
-    }
+    document.getElementById('reportTable').style.opacity = 1
   })
   }
 
@@ -1133,17 +995,10 @@ const visPlugin = {
   addError: function(err) { console.error(err); },
   
   create: function(element, config) {
-    this.svgContainer = d3.select(element)
-      .append("div")
-      .attr("id", "visSvg")
-      .attr("width", element.clientWidth)
-      .attr("height", element.clientHeight);
-
     this.tooltip = d3.select(element)
       .append("div")
       .attr("id", "tooltip")
       .attr("class", "hidden")
-    
   },
 
   updateAsync: function(data, element, config, queryResponse, details, done) {

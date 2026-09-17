@@ -1,19 +1,5 @@
 import { INDEX_COLUMN } from './constants'
 
-/**
- * Returns an array of given length, all populated with same value
- * Convenience function e.g. to initialise arrays of zeroes or nulls
- * @param {*} length 
- * @param {*} value 
- */
-const newArray = function(length, value) {
-  var arr = []
-  for (var l = 0; l < length; l++) {
-    arr.push(value)
-  }
-  return arr
-}
-
 class ModelField {
   constructor({ vis, queryResponseField }) {
     this.vis = vis
@@ -224,10 +210,6 @@ class Row {
     this.data = {}    // Indexed by Column.id
                       // { value: any, rendered: string, html?: string, links?: array }
   }
-
-  sortArray () {
-    return this.sort
-  }
 }
 
 /**
@@ -370,7 +352,6 @@ class Column {
 
 
 export {
-  newArray,
   ModelDimension,
   ModelPivot,
   ModelMeasure,

@@ -1,6 +1,7 @@
-import { cloneDeep } from "lodash"
 import SSF from "ssf"
 import { INDEX_COLUMN } from './constants'
+
+const clone = x => typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x))
 
 import {
   CellSeries,
@@ -419,7 +420,7 @@ class VisPluginTableModel {
    * Returns a new config object, combining the core options with dynamic options based on available dimensions and measures
    */
   getConfigOptions() {
-    var newOptions = cloneDeep(tableModelCoreOptions)
+    var newOptions = clone(tableModelCoreOptions)
     newOptions.customTheme.hidden = this.config.theme !== 'custom'
 
     var subtotal_options = []
@@ -1964,14 +1965,14 @@ class VisPluginTableModel {
       column.variance_type = 'absolute'
       column.idx = baseline.idx + 1
       column.pos = baseline.pos + 1
-      var sortCopy = cloneDeep(baseline.sort)
+      var sortCopy = clone(baseline.sort)
       column.sort = [...sortCopy, {name: 'variance_absolute', value: 1}]
       column.hide = !this.config['var_num|' + baseline.modelField.name]
     } else {
       column.variance_type = 'percentage'
       column.idx = baseline.idx + 2
       column.pos = baseline.pos + 2
-      var sortCopy = cloneDeep(baseline.sort)
+      var sortCopy = clone(baseline.sort)
       column.sort = [...sortCopy, {name: 'variance_percentage', value: 2}]
       column.unit = '%'
       column.hide = !this.config['var_pct|' + baseline.modelField.name]
@@ -2564,13 +2565,7 @@ class VisPluginTableModel {
    * @param {*} id 
    */
   getColumnById (id) {
-    var column = {}
-    this.columns.forEach(c => {
-      if (id === c.id) { 
-        column = c 
-      }
-    })
-    return column
+    return this.columns.find(c => c.id === id) || {}
   }
 
   /**
@@ -2578,23 +2573,7 @@ class VisPluginTableModel {
    * @param {*} id 
    */
   getRowById (id) {
-    var row = {}
-    this.data.forEach(r => {
-      if (id === r.id) {
-        row = r
-      }
-    })
-    return row
-  }
-
-  getMeasureByName (name) {
-    var measure = ''
-    this.measures.forEach(m => {
-      if (name === m.name) { 
-        measure = m
-      }
-    })
-    return measure
+    return this.data.find(r => r.id === id) || {}
   }
 
 
@@ -2706,27 +2685,6 @@ class VisPluginTableModel {
       updateColumnOrder(col_order)
     }
   }
-
-  /**
-   * Returns dataset as a simple json object
-   * Includes line_items only (e.g. no row subtotals)
-   * 
-   * Convenience function when using LookerData as an object to support e.g. Vega Lite visualisations
-   */
-  getSimpleJson() {
-    var raw_values = []
-    this.data.forEach(r => {
-      if (r.type === 'line_item') {
-        var row = {}
-        this.columns.forEach(c => {
-          row[c.id] = r.data[c.id].value
-        })
-        raw_values.push(row)
-      }
-    })
-    return raw_values
-  }
-
 
   /**
    * Builds array of arrays, used at by table vis to build column groups
