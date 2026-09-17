@@ -1,6 +1,7 @@
 import * as d3Selection from 'd3-selection'
 import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, RIGHT_OFFSET_BASE } from '../constants'
 import { downloadTableAsExcel } from '../download_link'
+import { VisPluginTableModel } from '../model/table_model'
 
 const d3 = { select: d3Selection.select }
 
@@ -233,38 +234,50 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
   }
 
   const visContainerSelection = d3.select(element).select("#visContainer");
+  const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
+  let buttonCount = 0;
+  const nextRightOffset = () => (RIGHT_OFFSET_BASE + (buttonCount++) * step) + "px";
+  const addBtn = (id, title, onClick) => {
+    const btn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", id).attr("title", title);
+    Object.entries(baseActionBtnStyle).forEach(([k, v]) => btn.style(k, v));
+    btn.style("top", "10px").style("right", nextRightOffset());
+    btn.on("click", () => onClick(btn));
+    return btn;
+  };
+  const addStrokeSvg = (btn, html) => btn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html(html);
 
   // Add download button only if exposeDownloadLink is true
   if (config.exposeDownloadLink) {
-    const downloadButton = visContainerSelection
-      .append("button")
-      .attr("class", "vis-action-btn")
-      .attr("id", "downloadButton")
-      .attr("title", "Download xls")
-    
-    Object.entries(baseActionBtnStyle).forEach(([k, v]) => downloadButton.style(k, v))
-    downloadButton.style("top", "10px").style("right", RIGHT_OFFSET_BASE + "px")
-
-    downloadButton.on("click", () => {
-      downloadButton.attr("class", "vis-action-btn loading")
+    const downloadButton = addBtn("downloadButton", "Download xls", (btn) => {
+      btn.attr("class", "vis-action-btn loading");
       setTimeout(async () => {
         try {
           await downloadTableAsExcel(element);
         } finally {
-          downloadButton.attr("class", "vis-action-btn")
+          btn.attr("class", "vis-action-btn");
         }
-      }, 250)
+      }, 250);
     });
+    downloadButton.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 640 640").style("fill", "#666")
+      .html('<path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM303 505C312.4 514.4 327.6 514.4 336.9 505L400.9 441C410.3 431.6 410.3 416.4 400.9 407.1C391.5 397.8 376.3 397.7 367 407.1L344 430.1L344 344C344 330.7 333.3 320 320 320C306.7 320 296 330.7 296 344L296 430.1L273 407.1C263.6 397.7 248.4 397.7 239.1 407.1C229.8 416.5 229.7 431.7 239.1 441L303.1 505z"/>');
+  }
 
-    downloadButton
-      .append("svg")
-      .attr("width", "16")
-      .attr("height", "16")
-      .attr("viewBox", "0 0 640 640")
-      .style("fill", "#666")
-      .html(
-        '<path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM303 505C312.4 514.4 327.6 514.4 336.9 505L400.9 441C410.3 431.6 410.3 416.4 400.9 407.1C391.5 397.8 376.3 397.7 367 407.1L344 430.1L344 344C344 330.7 333.3 320 320 320C306.7 320 296 330.7 296 344L296 430.1L273 407.1C263.6 397.7 248.4 397.7 239.1 407.1C229.8 416.5 229.7 431.7 239.1 441L303.1 505z"/>'
-      );
+  if (config.rowSubtotals && config.allowSubtotalToggle) {
+    const toggleSubtotalsBtn = addBtn("toggleSubtotalsBtn", config.hideSubtotals ? "Show Subtotals" : "Hide Subtotals", () => {
+      const nextHidden = !config.hideSubtotals;
+      config.hideSubtotals = nextHidden;
+      element._skipNextUpdate = true;
+      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout);
+      element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false; }, 500);
+      if (updateConfig) updateConfig({ hideSubtotals: nextHidden });
+      if (dataTable.lookerData && dataTable.queryResponse) {
+        Object.assign(dataTable, new VisPluginTableModel(dataTable.lookerData, dataTable.queryResponse, config));
+      }
+      if (redraw) redraw();
+    });
+    addStrokeSvg(toggleSubtotalsBtn, config.hideSubtotals
+      ? '<path d="M18 4H6l6 8-6 8h12" opacity="0.45"></path><line x1="3" y1="3" x2="21" y2="21"></line>'
+      : '<path d="M18 4H6l6 8-6 8h12"></path>');
   }
       
   if (dataTable.hasSubtotals) {
@@ -273,14 +286,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       element.querySelectorAll('#reportTable tbody tr').forEach(rowEl => updateRowIcon(rowEl, config))
     }
 
-    const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
-    const rightOffsetExpand = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + step : RIGHT_OFFSET_BASE) + "px";
-    const rightOffsetCollapse = (config.exposeDownloadLink ? RIGHT_OFFSET_BASE + 2 * step : RIGHT_OFFSET_BASE + step) + "px";
-
-    const expandAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "expandAllBtn").attr("title", "Expand All")
-    Object.entries(baseActionBtnStyle).forEach(([k, v]) => expandAllBtn.style(k, v))
-    expandAllBtn.style("top", "10px").style("right", rightOffsetExpand)
-    expandAllBtn.on("click", () => {
+    const expandAllBtn = addBtn("expandAllBtn", "Expand All", () => {
       element.querySelectorAll('#reportTable tbody tr').forEach(rowEl => {
         if (rowEl.classList.contains('collapsed')) {
           rowEl.classList.remove('collapsed')
@@ -289,12 +295,9 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       })
       syncRowVisibility(element, config, dataTable, { updateConfig })
     });
-    expandAllBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<polyline points="6 9 12 15 18 9"></polyline>');
+    addStrokeSvg(expandAllBtn, '<polyline points="6 9 12 15 18 9"></polyline>');
 
-    const collapseAllBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "collapseAllBtn").attr("title", "Collapse All")
-    Object.entries(baseActionBtnStyle).forEach(([k, v]) => collapseAllBtn.style(k, v))
-    collapseAllBtn.style("top", "10px").style("right", rightOffsetCollapse)
-    collapseAllBtn.on("click", () => {
+    const collapseAllBtn = addBtn("collapseAllBtn", "Collapse All", () => {
       element.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
         if (!rowEl.classList.contains('collapsed')) {
           rowEl.classList.add('collapsed')
@@ -303,35 +306,23 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       })
       syncRowVisibility(element, config, dataTable, { updateConfig })
     });
-    collapseAllBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<polyline points="6 15 12 9 18 15"></polyline>');
+    addStrokeSvg(collapseAllBtn, '<polyline points="6 15 12 9 18 15"></polyline>');
   }
 
   if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
-    let buttonCount = 0;
-    if (config.exposeDownloadLink) buttonCount++;
-    if (dataTable.hasSubtotals) buttonCount += 2;
-
-    const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
-    const rightOffsetClearSorts = (RIGHT_OFFSET_BASE + buttonCount * step) + "px";
-
-    const clearSortsBtn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", "clearSortsBtn").attr("title", "Clear Client Sorts")
-    Object.entries(baseActionBtnStyle).forEach(([k, v]) => clearSortsBtn.style(k, v))
-    clearSortsBtn.style("top", "10px").style("right", rightOffsetClearSorts)
-    clearSortsBtn.on("click", () => {
+    const clearSortsBtn = addBtn("clearSortsBtn", "Clear Client Sorts", () => {
       dataTable.clientSorts = []
       element._clientSorts = []
       element._skipNextUpdate = true
       if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
-      element._skipNextUpdateTimeout = setTimeout(() => {
-        element._skipNextUpdate = false
-      }, 500)
+      element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false }, 500)
       if (updateConfig) updateConfig({ clientSorts: [] })
       if (redraw) redraw()
     });
-    clearSortsBtn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html('<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
+    addStrokeSvg(clearSortsBtn, '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
   }
 
-  if (config.exposeDownloadLink || dataTable.hasSubtotals || (dataTable.clientSorts && dataTable.clientSorts.length > 0)) {
+  if (buttonCount > 0) {
     visContainerSelection
       .style("position", "relative")
       .style("cursor", "default")
@@ -339,35 +330,38 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
         visContainerSelection.style("cursor", "default");
       });
 
-    const style = document.createElement("style");
-    style.textContent = `
-      #visContainer:hover .vis-action-btn {
-        visibility: visible !important;
-      }
-      
-      .vis-action-btn.loading {
-        pointer-events: none;
-      }
-      
-      .vis-action-btn.loading::after {
-        content: '';
-        position: absolute;
-        top: 0px;
-        left: 0px;
-        width: 100%;
-        height: 100%;
-        border: 2px solid #e0e0e0;
-        border-top: 2px solid #666;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        box-sizing: border-box;
-      }
-      
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `;
-    document.head.appendChild(style);
+    if (!document.getElementById("reportTableActionBtnStyle")) {
+      const style = document.createElement("style");
+      style.id = "reportTableActionBtnStyle";
+      style.textContent = `
+        #visContainer:hover .vis-action-btn {
+          visibility: visible !important;
+        }
+        
+        .vis-action-btn.loading {
+          pointer-events: none;
+        }
+        
+        .vis-action-btn.loading::after {
+          content: '';
+          position: absolute;
+          top: 0px;
+          left: 0px;
+          width: 100%;
+          height: 100%;
+          border: 2px solid #e0e0e0;
+          border-top: 2px solid #666;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          box-sizing: border-box;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 }

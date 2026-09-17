@@ -60,6 +60,8 @@ class VisPluginTableModel {
   constructor(lookerData, queryResponse, config) {
     this.visId = 'report_table'
     this.config = config
+    this.lookerData = lookerData
+    this.queryResponse = queryResponse
 
     this.headers = []
     this.dimensions = []
@@ -84,7 +86,7 @@ class VisPluginTableModel {
     this.useHeadings = config.useHeadings || false
     this.useShortName = config.useShortName || false
     this.useViewName = config.useViewName || false
-    this.addRowSubtotals = config.rowSubtotals || false
+    this.addRowSubtotals = Boolean(config.rowSubtotals && !config.hideSubtotals)
     this.subtotalsOnTop = config.subtotalsOnTop || config.subtotalOnTop || false
     this.subtotalDepth = config.subtotalDepth || config.subtotal_depth || '(all)'
     this.addSubtotalDepth = this.subtotalDepth
@@ -107,7 +109,7 @@ class VisPluginTableModel {
     this.sorts = queryResponse.sorts
     this.hasTotals = typeof queryResponse.totals_data !== 'undefined' ? true : false
     this.calculateOthers = typeof queryResponse.truncated !== 'undefined' ? queryResponse.truncated && config.calculateOthers : false 
-    this.hasSubtotals = typeof queryResponse.subtotals_data !== 'undefined' ? true : false
+    this.hasSubtotals = false
     this.hasRowTotals = queryResponse.has_row_totals || false
     this.hasPivots = typeof queryResponse.pivots !== 'undefined' ? true : false
     this.hasSupers = typeof queryResponse.fields.supermeasure_like !== 'undefined' ? Boolean(queryResponse.fields.supermeasure_like.length) : false
@@ -132,7 +134,7 @@ class VisPluginTableModel {
       ? '(all)'
       : Math.min(Math.max(1, isNaN(parsedDepth) ? activeDims.length - 1 : parsedDepth), Math.max(1, activeDims.length - 1));
 
-    if (this.hasSubtotals) { this.checkSubtotalsData(queryResponse) }
+    if (typeof queryResponse.subtotals_data !== 'undefined') { this.checkSubtotalsData(queryResponse) }
     if (this.hasTotals) { this.buildTotals(queryResponse) }
     if (this.spanRows) { this.setRowSpans() }
     if (this.addRowSubtotals) { this.addSubTotals() }

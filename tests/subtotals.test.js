@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 import { VisPluginTableModel } from '../src/vis_table_plugin';
 const fixtures = require('./fixtures.json');
 
@@ -618,6 +619,89 @@ describe('Server subtotals ingestion and percentage fallback', () => {
     expect(ukSubtotal).toBeDefined();
     expect(ukSubtotal.data.sales.value).toBe(30);
     expect(ukSubtotal.data.sales.rendered).toBe('$30');
+  });
+
+  it('groups row subtotal options and hides them unless rowSubtotals is enabled', () => {
+    const defaultModel = new VisPluginTableModel(sampleRows, baseMetadata, {});
+    const defaultOpts = defaultModel.getConfigOptions();
+
+    const subtotalOptionKeys = [
+      'allowSubtotalToggle',
+      'subtotalDepth',
+      'subtotalStyle',
+      'subtotalsOnTop',
+      'genericLabelForSubtotals',
+      'arrowStyle',
+      'startFolded'
+    ];
+
+    subtotalOptionKeys.forEach(key => {
+      expect(defaultOpts[key]).toBeDefined();
+      expect(defaultOpts[key].hidden).toBe(true);
+      expect(defaultOpts[key].order).toBeGreaterThan(defaultOpts.colSubtotals.order);
+      expect(defaultOpts[key].order).toBeLessThan(defaultOpts.spanRows.order);
+    });
+    expect(defaultOpts.hideSubtotals.hidden).toBe(true);
+
+    const enabledModel = new VisPluginTableModel(sampleRows, baseMetadata, { rowSubtotals: true });
+    const enabledOpts = enabledModel.getConfigOptions();
+    subtotalOptionKeys.forEach(key => {
+      expect(enabledOpts[key].hidden).toBe(false);
+    });
+    expect(enabledOpts.hideSubtotals.hidden).toBe(true);
+  });
+
+  it('omits subtotal rows when hideSubtotals is true even if rowSubtotals is true', () => {
+    const hiddenSubtotalsModel = new VisPluginTableModel(sampleRows, baseMetadata, {
+      rowSubtotals: true,
+      hideSubtotals: true
+    });
+    expect(hiddenSubtotalsModel.hasSubtotals).toBe(false);
+    expect(hiddenSubtotalsModel.data.filter(r => r.type === 'subtotal').length).toBe(0);
+  });
+
+  it('renders toggleSubtotalsBtn in floating action bar and toggles subtotals on click', async () => {
+    const { visPlugin } = require('../src/report_table');
+    document.body.innerHTML = '<div id="vis"></div>';
+    const element = document.getElementById('vis');
+
+    visPlugin.create(element, {});
+    const triggerSpy = jest.fn();
+    visPlugin.trigger = triggerSpy;
+
+    const config = {
+      rowSubtotals: true,
+      allowSubtotalToggle: true
+    };
+
+    visPlugin.updateAsync(sampleRows, element, config, baseMetadata, {}, () => {});
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    let toggleBtn = element.querySelector('#toggleSubtotalsBtn');
+    expect(toggleBtn).not.toBeNull();
+    expect(toggleBtn.getAttribute('title')).toBe('Hide Subtotals');
+    expect(element.querySelector('#expandAllBtn')).not.toBeNull();
+    expect(element.querySelectorAll('tr.subtotal').length).toBeGreaterThan(0);
+
+    // Click toggle button to hide subtotals
+    toggleBtn.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(triggerSpy).toHaveBeenCalledWith('updateConfig', [{ hideSubtotals: true }]);
+    expect(element.querySelectorAll('tr.subtotal').length).toBe(0);
+    expect(element.querySelector('#expandAllBtn')).toBeNull();
+
+    toggleBtn = element.querySelector('#toggleSubtotalsBtn');
+    expect(toggleBtn).not.toBeNull();
+    expect(toggleBtn.getAttribute('title')).toBe('Show Subtotals');
+
+    // Click toggle button again to restore subtotals
+    toggleBtn.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(triggerSpy).toHaveBeenCalledWith('updateConfig', [{ hideSubtotals: false }]);
+    expect(element.querySelectorAll('tr.subtotal').length).toBeGreaterThan(0);
+    expect(element.querySelector('#expandAllBtn')).not.toBeNull();
   });
 });
 
