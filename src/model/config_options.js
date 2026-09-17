@@ -94,6 +94,64 @@ export const tableModelCoreOptions = {
     default: false,
     order: 2,
   },
+  allowSubtotalToggle: {
+    section: "Table",
+    type: "boolean",
+    label: "Allow Subtotal Toggle",
+    hidden: true,
+    default: false,
+    order: 2.1,
+  },
+  subtotalStyle: {
+    section: "Table",
+    type: "string",
+    label: "Subtotal Style",
+    display: "select",
+    values: [
+      { 'Simple': 'simple' },
+      { 'Collapsed': 'collapsed' }
+    ],
+    hidden: true,
+    default: "simple",
+    order: 2.3,
+  },
+  subtotalsOnTop: {
+    section: "Table",
+    type: "boolean",
+    label: "Subtotals on Top",
+    hidden: true,
+    default: false,
+    order: 2.4,
+  },
+  genericLabelForSubtotals: {
+    section: 'Table',
+    type: 'boolean',
+    label: "Label all subtotal rows as 'Subtotal'",
+    hidden: true,
+    default: false,
+    order: 2.5
+  },
+  arrowStyle: {
+    section: "Table",
+    type: "string",
+    label: "Arrow Style",
+    display: "select",
+    values: [
+      { 'Arrows': 'arrows' },
+      { '+/-': 'plus_minus' }
+    ],
+    hidden: true,
+    default: "arrows",
+    order: 2.6,
+  },
+  startFolded: {
+    section: "Table",
+    type: "boolean",
+    label: "Start Collapsed",
+    hidden: true,
+    default: false,
+    order: 2.7
+  },
   spanRows: {
     section: "Table",
     type: "boolean",
@@ -164,44 +222,6 @@ export const tableModelCoreOptions = {
     default: false,
     order: 10,
   },
-  genericLabelForSubtotals: {
-    section: 'Table',
-    type: 'boolean',
-    label: "Label all subtotal rows as 'Subtotal'",
-    default: false,
-    order: 11
-  },
-  subtotalsOnTop: {
-    section: "Table",
-    type: "boolean",
-    label: "Subtotals on Top",
-    default: false,
-    order: 12,
-  },
-  subtotalStyle: {
-    section: "Table",
-    type: "string",
-    label: "Subtotal Style",
-    display: "select",
-    values: [
-      { 'Simple': 'simple' },
-      { 'Collapsed': 'collapsed' }
-    ],
-    default: "simple",
-    order: 12.1,
-  },
-  arrowStyle: {
-    section: "Table",
-    type: "string",
-    label: "Arrow Style",
-    display: "select",
-    values: [
-      { 'Arrows': 'arrows' },
-      { '+/-': 'plus_minus' }
-    ],
-    default: "arrows",
-    order: 12.2,
-  },
   hideZeroCols: {
     section: "Table",
     type: "boolean",
@@ -259,13 +279,6 @@ export const tableModelCoreOptions = {
     default: "",
     order: 102
   },
-  startFolded: {
-    section: "Table",
-    type: "boolean",
-    label: "Start Collapsed",
-    default: false,
-    order: 103
-  },
   expandSubtotals: {
     section: "Table",
     type: "string",
@@ -273,6 +286,14 @@ export const tableModelCoreOptions = {
     label: "Expand Subtotals",
     default: "",
     order: 104
+  },
+  hideSubtotals: {
+    section: "Table",
+    type: "boolean",
+    hidden: true,
+    label: "Hide Subtotals",
+    default: false,
+    order: 105
   },
 }
 
@@ -324,15 +345,18 @@ export function getConfigOptions() {
   })
   subtotal_options.push({'(all)': '(all)'})
 
+  const hideSubtotalOptions = !this.config.rowSubtotals
   newOptions['subtotalDepth'] = {
     section: "Table",
     type: "string",
     label: "Sub Total Depth",
     display: 'select',
     values: subtotal_options,
+    hidden: hideSubtotalOptions,
     default: "(all)",
-    order: 5,
+    order: 2.2,
   }
+  ;['allowSubtotalToggle', 'subtotalStyle', 'subtotalsOnTop', 'genericLabelForSubtotals', 'arrowStyle', 'startFolded'].forEach(k => { newOptions[k].hidden = hideSubtotalOptions })
 
   this.measures.forEach((measure, i) => {
     newOptions['label|' + measure.name] = {
