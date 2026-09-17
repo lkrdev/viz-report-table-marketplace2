@@ -419,7 +419,7 @@ class VisPluginTableModel {
    * Returns a new config object, combining the core options with dynamic options based on available dimensions and measures
    */
   getConfigOptions() {
-    var newOptions = tableModelCoreOptions
+    var newOptions = cloneDeep(tableModelCoreOptions)
     newOptions.customTheme.hidden = this.config.theme !== 'custom'
 
     var subtotal_options = []

@@ -83,6 +83,7 @@ describe('Dynamic label and config option handling', () => {
 
     const customThemeModel = new VisPluginTableModel(rows, metadata, { theme: 'custom' });
     expect(customThemeModel.getConfigOptions().customTheme.hidden).toBe(false);
+    expect(VisPluginTableModel.getCoreConfigOptions().customTheme.hidden).toBe(true);
 
     const lookerThemeModel = new VisPluginTableModel(rows, metadata, { theme: 'looker' });
     expect(lookerThemeModel.getConfigOptions().customTheme.hidden).toBe(true);
