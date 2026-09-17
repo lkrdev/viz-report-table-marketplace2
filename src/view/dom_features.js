@@ -1,7 +1,6 @@
 import * as d3Selection from 'd3-selection'
 import { ACTION_BUTTON_SIZE, ACTION_BUTTON_SPACING, RIGHT_OFFSET_BASE } from '../constants'
 import { downloadTableAsExcel } from '../download_link'
-import { VisPluginTableModel } from '../model/table_model'
 
 const d3 = { select: d3Selection.select }
 
@@ -264,15 +263,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
 
   if (config.rowSubtotals && config.allowSubtotalToggle) {
     const toggleSubtotalsBtn = addBtn("toggleSubtotalsBtn", config.hideSubtotals ? "Show Subtotals" : "Hide Subtotals", () => {
-      const nextHidden = !config.hideSubtotals;
-      config.hideSubtotals = nextHidden;
-      element._skipNextUpdate = true;
-      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout);
-      element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false; }, 500);
-      if (updateConfig) updateConfig({ hideSubtotals: nextHidden });
-      if (dataTable.lookerData && dataTable.queryResponse) {
-        Object.assign(dataTable, new VisPluginTableModel(dataTable.lookerData, dataTable.queryResponse, config));
-      }
+      if (updateConfig) updateConfig({ hideSubtotals: !config.hideSubtotals });
       if (redraw) redraw();
     });
     addStrokeSvg(toggleSubtotalsBtn, config.hideSubtotals

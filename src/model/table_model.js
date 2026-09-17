@@ -60,8 +60,6 @@ class VisPluginTableModel {
   constructor(lookerData, queryResponse, config) {
     this.visId = 'report_table'
     this.config = config
-    this.lookerData = lookerData
-    this.queryResponse = queryResponse
 
     this.headers = []
     this.dimensions = []

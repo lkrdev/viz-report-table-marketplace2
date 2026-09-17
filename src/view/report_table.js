@@ -89,6 +89,13 @@ const visPlugin = {
       trigger('updateConfig', [{ columnOrder: newOrder }])
     }
     const updateConfig = newConfig => {
+      Object.assign(config, newConfig)
+      if ('hideSubtotals' in newConfig) {
+        element._skipNextUpdate = true
+        if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
+        element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false }, 500)
+        Object.assign(dataTable, new VisPluginTableModel(data, queryResponse, config))
+      }
       trigger('updateConfig', [newConfig])
     }
 
