@@ -60,7 +60,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
     return metrics.width;
   }
 
-  var table = d3.select('#visContainer')
+  var table = d3.select(element).select('#visContainer')
     .append('table')
       .attr('id', 'reportTable')
       .attr('class', dataTable.subtotalsOnTop ? 'reportTable subtotals-on-top' : 'reportTable')
@@ -464,8 +464,8 @@ export const renderTable = async function(element, config, dataTable, callbacks 
           var id = ['col', d.rowid].join('').replace('.', '')
         }
         
-        var colElement = document.getElementById(id)
-        colElement.classList.toggle('hover')
+        var colElement = element.querySelector('[id="' + id + '"]')
+        if (colElement) colElement.classList.toggle('hover')
       }
       
       if (dataTable.showTooltip && d.cell_style.includes('measure')) {
@@ -499,8 +499,8 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         } else {
           var id = ['col', d.rowid].join('').replace('.', '')
         }
-        var colElement = document.getElementById(id)
-        colElement.classList.toggle('hover')
+        var colElement = element.querySelector('[id="' + id + '"]')
+        if (colElement) colElement.classList.toggle('hover')
       }
       
       if (dataTable.showTooltip  && d.cell_style.includes('measure')) {
@@ -545,14 +545,17 @@ export const buildReportTable = function(config, dataTable, updateColumnOrder, u
   }
 
   const redraw = function() {
-    d3.select('#visContainer').html('')
+    d3.select(element).select('#visContainer').html('')
 
     return renderTable(element, config, dataTable, { updateColumnOrder, updateConfig, redraw }).then(() => {
-      document.getElementById('reportTable').classList.add('reveal')
+      const reportTable = element.querySelector('#reportTable')
+      if (reportTable) {
+        reportTable.classList.add('reveal')
+        reportTable.style.opacity = 1
+      }
       renderFloatingActionBar(element, config, dataTable, { updateConfig, redraw })
       applyStickyColumns(element, config, dataTable)
       applyStickyHeaders(element, config, dataTable)
-      document.getElementById('reportTable').style.opacity = 1
     })
   }
 

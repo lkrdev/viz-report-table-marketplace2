@@ -398,7 +398,7 @@ export function addSubTotals () {
             if (column.modelField.calculation_type === 'average' && subtotal_items > 0) {
               subtotal_value = subtotal_value / subtotal_items
             }
-            if (subtotal_value) {
+            if (subtotal_items > 0) {
               var unit = this.config.useUnit && column.modelField.unit !== '#'  ? column.modelField.unit : ''
               rendered = column.modelField.value_format === '' ? subtotal_value.toString() : unit + SSF.format(column.modelField.value_format, subtotal_value)
             }
@@ -642,6 +642,7 @@ export function createVarianceColumn (colpair) {
   var id = ['$$$_variance_$$$', colpair.calc, colpair.variance.baseline, colpair.variance.comparison].join('|')
   var baseline = this.getColumnById(colpair.variance.baseline)
   var comparison = this.getColumnById(colpair.variance.comparison)
+  if (!baseline.modelField || !comparison.modelField) return
   var column = new Column(id, this, baseline.modelField)
   column.isVariance = true
 

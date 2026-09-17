@@ -68,13 +68,13 @@ export function applyStickyColumns(element, config, dataTable) {
     const numColsToFreeze = Math.min(X, visibleCols.length);
 
     if (numColsToFreeze > 0) {
-      document.querySelectorAll('#reportTable .sticky-col').forEach(el => {
+      element.querySelectorAll('#reportTable .sticky-col').forEach(el => {
         el.style.position = '';
         el.style.left = '';
         el.classList.remove('sticky-col');
       });
 
-      const trs = document.querySelectorAll('#reportTable tr');
+      const trs = element.querySelectorAll('#reportTable tr');
       const containerLeft = visContainer.getBoundingClientRect().left;
       const scrollLeft = visContainer.scrollLeft;
       const colLefts = {};
@@ -188,7 +188,7 @@ export function updateRowIcon(rowEl, config) {
 
 export function syncRowVisibility(element, config, dataTable, callbacks = {}, skipUpdateConfig = false) {
   const { updateConfig } = callbacks;
-  const rows = Array.from(document.querySelectorAll('#reportTable tbody tr'))
+  const rows = Array.from(element.querySelectorAll('#reportTable tbody tr'))
   const subtotalRows = rows.filter(r => r.classList.contains('subtotal'))
   const collapsedPaths = subtotalRows.filter(r => r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
   const unfoldedPaths = subtotalRows.filter(r => !r.classList.contains('collapsed')).map(r => r.getAttribute('data-subtotal-path'))
@@ -270,7 +270,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
   if (dataTable.hasSubtotals) {
     if (config.collapsedSubtotals || config.startFolded) {
       syncRowVisibility(element, config, dataTable, { updateConfig }, true)
-      document.querySelectorAll('#reportTable tbody tr').forEach(rowEl => updateRowIcon(rowEl, config))
+      element.querySelectorAll('#reportTable tbody tr').forEach(rowEl => updateRowIcon(rowEl, config))
     }
 
     const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
@@ -281,7 +281,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
     Object.entries(baseActionBtnStyle).forEach(([k, v]) => expandAllBtn.style(k, v))
     expandAllBtn.style("top", "10px").style("right", rightOffsetExpand)
     expandAllBtn.on("click", () => {
-      document.querySelectorAll('#reportTable tbody tr').forEach(rowEl => {
+      element.querySelectorAll('#reportTable tbody tr').forEach(rowEl => {
         if (rowEl.classList.contains('collapsed')) {
           rowEl.classList.remove('collapsed')
           updateRowIcon(rowEl, config)
@@ -295,7 +295,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
     Object.entries(baseActionBtnStyle).forEach(([k, v]) => collapseAllBtn.style(k, v))
     collapseAllBtn.style("top", "10px").style("right", rightOffsetCollapse)
     collapseAllBtn.on("click", () => {
-      document.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
+      element.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
         if (!rowEl.classList.contains('collapsed')) {
           rowEl.classList.add('collapsed')
           updateRowIcon(rowEl, config)

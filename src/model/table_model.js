@@ -311,7 +311,7 @@ class VisPluginTableModel {
               switch (header.type) {
                 case 'pivot0':
                 case 'pivot1':
-                  var label = isRowTotal ? '' : pivot_value.metadata[header.modelField.name].rendered || pivot_value.metadata[header.modelField.name].value
+                  var label = isRowTotal ? '' : (pivot_value.metadata?.[header.modelField.name]?.rendered || pivot_value.metadata?.[header.modelField.name]?.value || '')
                   if (isRowTotal && header.type.startsWith('pivot') && header.type === 'pivot' + (this.pivot_fields.length - 1)) {
                     label = 'Row Total'
                   }
@@ -627,7 +627,7 @@ class VisPluginTableModel {
       row.id = this.dimensions.map(dimension => lookerRow[dimension.name].value).join('|')
 
       this.columns.forEach(column => {
-        var cellValue = (column.pivoted || column.isRowTotal)? lookerRow[column.modelField.name][column.pivot_key] : lookerRow[column.id]
+        var cellValue = (column.pivoted || column.isRowTotal) ? lookerRow[column.modelField.name]?.[column.pivot_key] : lookerRow[column.id]
         var cell = new DataCell({ 
           ...cellValue, 
           ...{ 
