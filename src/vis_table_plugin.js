@@ -33,6 +33,7 @@ const tableModelCoreOptions = {
     section: "Theme",
     type: "string",
     label: "Load custom CSS from:",
+    hidden: true,
     default: "",
     order: 2,
   },
@@ -419,6 +420,7 @@ class VisPluginTableModel {
    */
   getConfigOptions() {
     var newOptions = tableModelCoreOptions
+    newOptions.customTheme.hidden = this.config.theme !== 'custom'
 
     var subtotal_options = []
     this.dimensions.forEach((dimension, i) => {
