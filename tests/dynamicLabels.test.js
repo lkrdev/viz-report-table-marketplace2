@@ -74,4 +74,18 @@ describe('Dynamic label and config option handling', () => {
     const fieldHeaderCell = column.levels.find(l => l.type === 'field');
     expect(fieldHeaderCell.label).toBe('User Custom Header Override');
   });
+
+  it('dynamically hides customTheme unless theme is set to custom', () => {
+    const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
+
+    const defaultModel = new VisPluginTableModel(rows, metadata, {});
+    expect(defaultModel.getConfigOptions().customTheme.hidden).toBe(true);
+
+    const customThemeModel = new VisPluginTableModel(rows, metadata, { theme: 'custom' });
+    expect(customThemeModel.getConfigOptions().customTheme.hidden).toBe(false);
+    expect(VisPluginTableModel.getCoreConfigOptions().customTheme.hidden).toBe(true);
+
+    const lookerThemeModel = new VisPluginTableModel(rows, metadata, { theme: 'looker' });
+    expect(lookerThemeModel.getConfigOptions().customTheme.hidden).toBe(true);
+  });
 });
