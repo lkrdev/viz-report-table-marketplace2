@@ -1,7 +1,7 @@
 import SSF from "ssf"
 import { INDEX_COLUMN } from './constants'
 
-const clone = x => typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x))
+const clone = x => x === undefined ? undefined : (typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x)))
 
 import {
   CellSeries,
