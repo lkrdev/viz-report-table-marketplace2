@@ -404,8 +404,12 @@ export function handleCellHoverAndTooltip(action, d, event, rootEl, tooltipEl, d
   } else if (action === 'move' && dataTable.showTooltip && isMeasure && tooltipEl && event) {
     const bounds = rootEl.getBoundingClientRect();
     const tipRect = tooltipEl.getBoundingClientRect();
-    const x = event.clientX < bounds.x + bounds.width / 2 ? event.pageX + 10 : event.pageX - tipRect.width - 10;
-    const y = event.clientY < bounds.y + bounds.height / 2 ? event.pageY + 10 : event.pageY - tipRect.height - 10;
+    const clientX = event.clientX ?? event.pageX ?? 0;
+    const clientY = event.clientY ?? event.pageY ?? 0;
+    const pageX = event.pageX ?? event.clientX ?? 0;
+    const pageY = event.pageY ?? event.clientY ?? 0;
+    const x = clientX < bounds.x + bounds.width / 2 ? pageX + 10 : pageX - tipRect.width - 10;
+    const y = clientY < bounds.y + bounds.height / 2 ? pageY + 10 : pageY - tipRect.height - 10;
     tooltipEl.style.left = `${x}px`;
     tooltipEl.style.top = `${y}px`;
   }
