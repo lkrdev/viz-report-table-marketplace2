@@ -34,6 +34,12 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     | undefined;
 
   useEffect(() => {
+    // TODO: Remove once Looker fixes the dashboard visualization title override bug (present in Looker 26.14.12).
+    // Calling updateTitle('') on mount prevents the extension application label from overwriting the dashboard/tile title.
+    extensionSDK?.updateTitle?.("");
+  }, [extensionSDK]);
+
+  useEffect(() => {
     if (typeof window !== "undefined" && tileSDK) {
       (window as any).LookerCharts = {
         Utils: {

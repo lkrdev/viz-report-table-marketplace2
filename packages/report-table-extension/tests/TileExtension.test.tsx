@@ -5,6 +5,8 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { TileExtension } from "../TileExtension";
 
+declare const describe: any, test: any, expect: any, jest: any;
+
 describe("TileExtension", () => {
   test("renders ReportTable with visualizationData and signals rendered()", async () => {
     const container = document.createElement("div");
@@ -14,11 +16,13 @@ describe("TileExtension", () => {
     const configureVisualization = jest.fn();
     const setVisConfig = jest.fn();
     const rendered = jest.fn();
+    const updateTitle = jest.fn();
     const openDrillMenu = jest.fn();
     const clearErrors = jest.fn();
 
     const host = {
       rendered,
+      updateTitle,
       tileSDK: { openDrillMenu, clearErrors },
       visualizationSDK: {
         configureVisualization,
@@ -66,6 +70,7 @@ describe("TileExtension", () => {
     expect(container.textContent).toContain("42");
     expect(configureVisualization).toHaveBeenCalled();
     expect(rendered).toHaveBeenCalled();
+    expect(updateTitle).toHaveBeenCalledWith("");
     expect(clearErrors).toHaveBeenCalled();
 
     act(() => {
