@@ -72,21 +72,23 @@ export function checkVarianceCalculations() {
  * @param {*} queryResponse 
  */
 export function checkSubtotalsData(queryResponse) {
-  if (!queryResponse || !queryResponse.subtotals_data) { return }
+  const subtotalsMap = queryResponse && (queryResponse.subtotals_data || queryResponse.subtotalsData)
+  if (!subtotalsMap) { return }
+  const subtotalSets = queryResponse.subtotal_sets || queryResponse.subtotalSets
 
   var depthsToProcess = (this.addSubtotalDepth === '(all)' || !this.addSubtotalDepth)
-    ? Object.keys(queryResponse.subtotals_data)
+    ? Object.keys(subtotalsMap)
     : [this.addSubtotalDepth.toString()]
 
   depthsToProcess.forEach(depthKey => {
-    var subtotalRows = queryResponse.subtotals_data[depthKey]
+    var subtotalRows = subtotalsMap[depthKey]
     if (!Array.isArray(subtotalRows)) { return }
 
     subtotalRows.forEach(lookerSubtotal => {
       var visSubtotal = new Row('subtotal')
 
       visSubtotal['$$$__grouping__$$$'] = lookerSubtotal['$$$__grouping__$$$']
-        || (queryResponse.subtotal_sets && queryResponse.subtotal_sets[parseInt(depthKey, 10) - 1])
+        || (subtotalSets && subtotalSets[parseInt(depthKey, 10) - 1])
         || this.dimensions.slice(0, parseInt(depthKey, 10)).map(d => d.name)
 
       var dims = visSubtotal['$$$__grouping__$$$'].map(group => lookerSubtotal[group]?.value).join('|')
@@ -343,8 +345,10 @@ export function addSubTotals () {
           const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'dimension'] : ['total', 'subtotal', 'nonNumeric', 'dimension']
           if (this.subtotalsOnTop) { cell_style.push('subtotal-top', 'subtotals-on-top') }
+          var existingSubCell = this.subtotals_data?.[subtotalRow.id]?.data?.[column.id]
           var cell = new DataCell({ 
             value: '',
+            links: existingSubCell?.links || [],
             'cell_style': cell_style, 
             align: column.modelField.is_numeric ? 'right' : 'left', 
             rowspan: rowspan, 

@@ -22,6 +22,7 @@ A table visualization for single-page summary reports in Looker. Built for PDF e
 
 ## Recent updates
 
+- Added an "Allow Subtotal Toggle" (`allowSubtotalToggle`) option that exposes a floating Sigma (`Σ`) action button on hover to show or hide row subtotals (`hideSubtotals`) on demand.
 - Added collapsed subtotals (`subtotalStyle: 'collapsed'`) with interactive expand and collapse row toggles (`arrowStyle`), hierarchy indentation, and combined header labels.
 - Added a "Subtotals on Top" setting to render row subtotals above line items.
 - Added an option to freeze the first X columns during horizontal scrolling.
@@ -89,6 +90,10 @@ When working with multi-level hierarchies (such as Country > State > Category), 
 - Subtotal Style:
   - `Simple`: Standard multi-column layout with subtotal rows.
   - `Collapsed`: Collapses dimension columns into a single column with indentation levels (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and combines column headers (such as `Country / State / Category`).
+- Allow Subtotal Toggle (`allowSubtotalToggle`):
+  - When **Row Subtotals** (`rowSubtotals`) is enabled, turning on **Allow Subtotal Toggle** adds a floating Sigma (`Σ`) button (`#toggleSubtotalsBtn`) to the top-right action bar when hovering over the table.
+  - Clicking the button toggles `hideSubtotals` between showing and hiding subtotal rows on the fly without modifying the underlying query.
+  - If **Allow Subtotal Toggle** is turned off, any hidden toggle state (`hideSubtotals`) is ignored so row subtotals always display when `rowSubtotals` is active.
 - Arrow Style:
   - `Arrows`: Displays `▲` / `▼` toggle icons.
   - `+/-`: Displays `[-]` / `[+]` toggle buttons.

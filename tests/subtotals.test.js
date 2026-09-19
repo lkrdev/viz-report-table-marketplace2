@@ -660,13 +660,22 @@ describe('Server subtotals ingestion and percentage fallback', () => {
     expect(enabledOpts.hideSubtotals.hidden).toBe(true);
   });
 
-  it('omits subtotal rows when hideSubtotals is true even if rowSubtotals is true', () => {
+  it('omits subtotal rows when hideSubtotals is true and allowSubtotalToggle is enabled, and ignores hideSubtotals when allowSubtotalToggle is off', () => {
     const hiddenSubtotalsModel = new VisPluginTableModel(sampleRows, baseMetadata, {
       rowSubtotals: true,
+      allowSubtotalToggle: true,
       hideSubtotals: true
     });
     expect(hiddenSubtotalsModel.hasSubtotals).toBe(false);
     expect(hiddenSubtotalsModel.data.filter(r => r.type === 'subtotal').length).toBe(0);
+
+    const toggleDisabledModel = new VisPluginTableModel(sampleRows, baseMetadata, {
+      rowSubtotals: true,
+      allowSubtotalToggle: false,
+      hideSubtotals: true
+    });
+    expect(toggleDisabledModel.hasSubtotals).toBe(true);
+    expect(toggleDisabledModel.data.filter(r => r.type === 'subtotal').length).toBeGreaterThan(0);
   });
 
   it('renders toggleSubtotalsBtn in floating action bar and toggles subtotals on click', async () => {

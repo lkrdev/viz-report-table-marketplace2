@@ -1,1 +1,7 @@
 export * from './view/report_table'
+export { buildReportTable, computeColumnTextWidths, getTextWidth } from './view/table_renderer'
+export { applyStickyStyles, applyStickyHeaders, applyStickyColumns, updateRowIcon, syncRowVisibility, applyCollapsedConfigToRows, renderFloatingActionBar, handleCellHoverAndTooltip } from './view/dom_features'
+export { VisPluginTableModel } from './model/table_model'
+export * from './vis_primitives'
+export { downloadTableAsExcel, getTableExcelDataUrl } from './download_link'
+export { INDEX_COLUMN } from './constants'

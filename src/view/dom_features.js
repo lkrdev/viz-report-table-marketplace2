@@ -212,6 +212,20 @@ export function syncRowVisibility(element, config, dataTable, callbacks = {}, sk
   applyStickyHeaders(element, config, dataTable);
 }
 
+export function applyCollapsedConfigToRows(element, config, dataTable) {
+  const savedCollapsed = config.collapsedSubtotals ? config.collapsedSubtotals.split(',').filter(Boolean) : [];
+  const savedUnfolded = config.expandSubtotals ? config.expandSubtotals.split(',').filter(Boolean) : [];
+  element.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
+    const rowPath = rowEl.getAttribute('data-subtotal-path') || '';
+    const shouldCollapse = config.startFolded
+      ? !savedUnfolded.includes(rowPath)
+      : savedCollapsed.includes(rowPath);
+    rowEl.classList.toggle('collapsed', shouldCollapse);
+    updateRowIcon(rowEl, config);
+  });
+  syncRowVisibility(element, config, dataTable, {}, true);
+}
+
 export function renderFloatingActionBar(element, config, dataTable, callbacks = {}) {
   const { updateConfig, redraw } = callbacks;
 
@@ -233,11 +247,17 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
   }
 
   const visContainerSelection = d3.select(element).select("#visContainer");
+  const activeBtnIds = new Set();
   const step = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING;
   let buttonCount = 0;
   const nextRightOffset = () => (RIGHT_OFFSET_BASE + (buttonCount++) * step) + "px";
   const addBtn = (id, title, onClick) => {
-    const btn = visContainerSelection.append("button").attr("class", "vis-action-btn").attr("id", id).attr("title", title);
+    activeBtnIds.add(id);
+    let btn = visContainerSelection.select("#" + id);
+    if (btn.empty()) {
+      btn = visContainerSelection.append("button");
+    }
+    btn.attr("class", "vis-action-btn").attr("id", id).attr("title", title).html("");
     Object.entries(baseActionBtnStyle).forEach(([k, v]) => btn.style(k, v));
     btn.style("top", "10px").style("right", nextRightOffset());
     btn.on("click", () => onClick(btn));
@@ -264,7 +284,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
   if (config.rowSubtotals && config.allowSubtotalToggle) {
     const toggleSubtotalsBtn = addBtn("toggleSubtotalsBtn", config.hideSubtotals ? "Show Subtotals" : "Hide Subtotals", () => {
       if (updateConfig) updateConfig({ hideSubtotals: !config.hideSubtotals });
-      if (redraw) redraw();
+      if (redraw && !element._isReactManaged) redraw();
     });
     addStrokeSvg(toggleSubtotalsBtn, config.hideSubtotals
       ? '<path d="M18 4H6l6 8-6 8h12" opacity="0.45"></path><line x1="3" y1="3" x2="21" y2="21"></line>'
@@ -313,6 +333,10 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
     addStrokeSvg(clearSortsBtn, '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
   }
 
+  visContainerSelection.selectAll(".vis-action-btn").each(function() {
+    if (!activeBtnIds.has(this.id)) d3.select(this).remove();
+  });
+
   if (buttonCount > 0) {
     visContainerSelection
       .style("position", "relative")
@@ -354,5 +378,39 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       `;
       document.head.appendChild(style);
     }
+  }
+}
+
+export function handleCellHoverAndTooltip(action, d, event, rootEl, tooltipEl, dataTable) {
+  if (!rootEl) return;
+  const colId = (!dataTable.transposeTable ? `col${d.colid}` : `col${d.rowid}`).replace('.', '');
+  const isMeasure = Boolean(d.cell_style && d.cell_style.includes('measure'));
+
+  if (action === 'enter' || action === 'leave') {
+    if (dataTable.showHighlight) {
+      const colEl = rootEl.querySelector(`[id="${colId}"]`);
+      if (colEl) colEl.classList.toggle('hover', action === 'enter');
+    }
+    if (dataTable.showTooltip && isMeasure && tooltipEl) {
+      if (action === 'enter' && event) {
+        tooltipEl.innerHTML = dataTable.getCellToolTip(d.rowid, d.colid);
+        tooltipEl.style.left = `${(event.pageX ?? event.clientX) + 10}px`;
+        tooltipEl.style.top = `${(event.pageY ?? event.clientY) + 10}px`;
+        tooltipEl.classList.remove('hidden');
+      } else {
+        tooltipEl.classList.add('hidden');
+      }
+    }
+  } else if (action === 'move' && dataTable.showTooltip && isMeasure && tooltipEl && event) {
+    const bounds = rootEl.getBoundingClientRect();
+    const tipRect = tooltipEl.getBoundingClientRect();
+    const clientX = event.clientX ?? event.pageX ?? 0;
+    const clientY = event.clientY ?? event.pageY ?? 0;
+    const pageX = event.pageX ?? event.clientX ?? 0;
+    const pageY = event.pageY ?? event.clientY ?? 0;
+    const x = clientX < bounds.x + bounds.width / 2 ? pageX + 10 : pageX - tipRect.width - 10;
+    const y = clientY < bounds.y + bounds.height / 2 ? pageY + 10 : pageY - tipRect.height - 10;
+    tooltipEl.style.left = `${x}px`;
+    tooltipEl.style.top = `${y}px`;
   }
 }
