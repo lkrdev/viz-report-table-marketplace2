@@ -1,0 +1,17 @@
+{
+  "name": "report-table-react",
+  "version": "1.0.0",
+  "description": "React component and Looker custom visualization wrapper for report-table-js",
+  "main": "index.tsx",
+  "types": "index.tsx",
+  "scripts": {
+    "build": "webpack --config webpack.config.js"
+  },
+  "dependencies": {
+    "report-table-js": "*"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  }
+}

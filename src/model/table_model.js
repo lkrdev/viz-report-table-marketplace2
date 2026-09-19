@@ -84,7 +84,7 @@ class VisPluginTableModel {
     this.useHeadings = config.useHeadings || false
     this.useShortName = config.useShortName || false
     this.useViewName = config.useViewName || false
-    this.addRowSubtotals = Boolean(config.rowSubtotals && !config.hideSubtotals)
+    this.addRowSubtotals = Boolean(config.rowSubtotals && !(config.allowSubtotalToggle && config.hideSubtotals))
     this.subtotalsOnTop = config.subtotalsOnTop || config.subtotalOnTop || false
     this.subtotalDepth = config.subtotalDepth || config.subtotal_depth || '(all)'
     this.addSubtotalDepth = this.subtotalDepth
@@ -132,7 +132,7 @@ class VisPluginTableModel {
       ? '(all)'
       : Math.min(Math.max(1, isNaN(parsedDepth) ? activeDims.length - 1 : parsedDepth), Math.max(1, activeDims.length - 1));
 
-    if (typeof queryResponse.subtotals_data !== 'undefined') { this.checkSubtotalsData(queryResponse) }
+    if (typeof queryResponse.subtotals_data !== 'undefined' || typeof queryResponse.subtotalsData !== 'undefined') { this.checkSubtotalsData(queryResponse) }
     if (this.hasTotals) { this.buildTotals(queryResponse) }
     if (this.spanRows) { this.setRowSpans() }
     if (this.addRowSubtotals) { this.addSubTotals() }

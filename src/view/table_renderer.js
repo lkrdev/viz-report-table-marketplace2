@@ -6,7 +6,8 @@ import {
   applyStickyColumns,
   syncRowVisibility,
   updateRowIcon,
-  renderFloatingActionBar
+  renderFloatingActionBar,
+  handleCellHoverAndTooltip
 } from './dom_features'
 
 const d3 = { select: d3Selection.select, drag: d3Drag, get event() { return d3Selection.event } }
@@ -45,20 +46,88 @@ export const getHeaderCellSortInfo = (d, dataTable) => {
   return { sortId, sortIndex, sortObj, points };
 };
 
+export const getTextWidth = function(text, font = '', defaultFontSize = 12) {
+  if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '')) {
+    return String(text || '').length * 8;
+  }
+  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement('canvas'));
+  var context = canvas.getContext('2d');
+  if (!context) return String(text || '').length * 8;
+  context.font = font || defaultFontSize + 'pt arial';
+  var metrics = context.measureText(text);
+  return metrics.width;
+};
+
+export const computeColumnTextWidths = function(dataTable, config) {
+  var columnTextWidths = {};
+  if (!dataTable || !dataTable.minWidthForIndexColumns) return columnTextWidths;
+
+  const bodyFontSize = config.bodyFontSize || 12;
+  const headerFontSize = config.headerFontSize || 12;
+  const measureText = (text, font = '') => getTextWidth(text, font, bodyFontSize);
+
+  if (!dataTable.transposeTable) {
+    dataTable.column_series.filter(cs => !cs.column.hide).filter(cs => cs.column.modelField.type === 'dimension').forEach(cs => {
+      var columnId = cs.column.modelField.name;
+      if (dataTable.useIndexColumn) {
+        columnId = INDEX_COLUMN;
+      }
+
+      if (dataTable.subtotalStyle === 'collapsed') {
+        const headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
+        const fontHeader = 'bold ' + headerFontSize + 'pt arial';
+        const fontBody = bodyFontSize + 'pt arial';
+        let maxW = measureText(headerLabel, fontHeader) + 30;
+
+        const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
+        const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
+          ? (activeDims.length || 1)
+          : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
+        const maxDepth = Math.max(depthLimit - 1, 0);
+
+        dataTable.data.forEach(row => {
+          if (row.type === 'subtotal') {
+            const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
+            const depth = row.depthIndex !== undefined ? row.depthIndex : 0;
+            const w = measureText(String(text), fontBody) + (depth * 16) + 40;
+            if (w > maxW) maxW = w;
+          } else if (row.type === 'line_item') {
+            const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
+            const w = measureText(String(text), fontBody) + (maxDepth * 16) + 30;
+            if (w > maxW) maxW = w;
+          }
+        });
+        columnTextWidths[columnId] = Math.ceil(maxW);
+      } else {
+        var values = cs.series.values || [];
+        var headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
+        var maxValW = values.length > 0 ? values.reduce((a, b) => Math.max(measureText(a), measureText(b)), 0) : 0;
+        var headerW = measureText(headerLabel, 'bold ' + headerFontSize + 'pt arial') + 20;
+        var maxLength = Math.max(maxValW, headerW);
+        if (dataTable.useIndexColumn) {
+          maxLength += 15;
+        }
+        columnTextWidths[columnId] = Math.ceil(maxLength);
+      }
+    });
+  } else {
+    dataTable.headers.forEach(header => {
+      var fontSize = 'bold ' + bodyFontSize + 'pt arial';
+      var maxLength = dataTable.transposed_data
+        .map(row => row.data[header.type].rendered)
+        .reduce((a, b) => Math.max(measureText(a, fontSize), measureText(b, fontSize)));
+      columnTextWidths[header.type] = Math.ceil(maxLength);
+    });
+  }
+  return columnTextWidths;
+};
+
 export const renderTable = async function(element, config, dataTable, callbacks = {}) {
   const { updateColumnOrder, updateConfig, redraw } = callbacks;
   var dropTarget = null;
   const bounds = element.getBoundingClientRect()
   const chartCentreX = bounds.x + (bounds.width / 2);
   const chartCentreY = bounds.y + (bounds.height / 2);
-
-  const getTextWidth = function(text, font = '') {
-    var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement('canvas'));
-    var context = canvas.getContext('2d');
-    context.font = font || config.bodyFontSize + 'pt arial';
-    var metrics = context.measureText(text);
-    return metrics.width;
-  }
 
   var table = d3.select(element).select('#visContainer')
     .append('table')
@@ -99,63 +168,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       }
     })
   
-  if (dataTable.minWidthForIndexColumns) {
-    var columnTextWidths = {}
-
-    if (!dataTable.transposeTable) {
-      dataTable.column_series.filter(cs => !cs.column.hide).filter(cs => cs.column.modelField.type === 'dimension').forEach(cs => {
-        var columnId = cs.column.modelField.name
-        if (dataTable.useIndexColumn) {
-          columnId = INDEX_COLUMN
-        }
-
-        if (dataTable.subtotalStyle === 'collapsed') {
-          const headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
-          const fontHeader = 'bold ' + config.headerFontSize + 'pt arial';
-          const fontBody = config.bodyFontSize + 'pt arial';
-          let maxW = getTextWidth(headerLabel, fontHeader) + 30;
-
-          const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];
-          const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
-            ? (activeDims.length || 1)
-            : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
-          const maxDepth = Math.max(depthLimit - 1, 0);
-
-          dataTable.data.forEach(row => {
-            if (row.type === 'subtotal') {
-              const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
-              const depth = row.depthIndex !== undefined ? row.depthIndex : 0;
-              const w = getTextWidth(String(text), fontBody) + (depth * 16) + 40;
-              if (w > maxW) maxW = w;
-            } else if (row.type === 'line_item') {
-              const text = row.data[cs.column.id]?.rendered || row.data[cs.column.id]?.value || '';
-              const w = getTextWidth(String(text), fontBody) + (maxDepth * 16) + 30;
-              if (w > maxW) maxW = w;
-            }
-          });
-          columnTextWidths[columnId] = Math.ceil(maxW);
-        } else {
-          var values = cs.series.values || [];
-          var headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
-          var maxValW = values.length > 0 ? values.reduce((a, b) => Math.max(getTextWidth(a), getTextWidth(b)), 0) : 0;
-          var headerW = getTextWidth(headerLabel, 'bold ' + config.headerFontSize + 'pt arial') + 20;
-          var maxLength = Math.max(maxValW, headerW);
-          if (dataTable.useIndexColumn) {
-            maxLength += 15
-          }
-          columnTextWidths[columnId] = Math.ceil(maxLength)
-        }
-      })
-    } else {
-      dataTable.headers.forEach(header => {
-        var fontSize = 'bold ' + config.bodyFontSize + 'pt arial'
-        var maxLength = dataTable.transposed_data
-          .map(row => row.data[header.type].rendered)
-          .reduce((a, b) => Math.max(getTextWidth(a, fontSize), getTextWidth(b, fontSize)))
-        columnTextWidths[header.type] = Math.ceil(maxLength)
-      })
-    }
-  }
+  var columnTextWidths = computeColumnTextWidths(dataTable, config);
   
   var column_groups = table.selectAll('colgroup')
     .data(dataTable.getTableColumnGroups()).enter()  
@@ -390,6 +403,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
     .attr('colspan', d => d.colspan)
     .style('text-align', d => d.align)
     .style('font-size', config.bodyFontSize + 'px')
+    .style('cursor', d => (d.links && d.links.length > 0) ? 'pointer' : 'default')
     .style('padding-left', (d, i, nodes) => {
       const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
       if (subtotalStyle === 'collapsed' && d.cell_style && d.cell_style.includes('dimension')) {
@@ -456,57 +470,9 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       }
       return classes.join(' ')
     })
-    .on('mouseover', d => {
-      if (dataTable.showHighlight) {
-        if (!dataTable.transposeTable) {
-          var id = ['col', d.colid].join('').replace('.', '')
-        } else {
-          var id = ['col', d.rowid].join('').replace('.', '')
-        }
-        
-        var colElement = element.querySelector('[id="' + id + '"]')
-        if (colElement) colElement.classList.toggle('hover')
-      }
-      
-      if (dataTable.showTooltip && d.cell_style.includes('measure')) {
-        var x = d3.event.clientX
-        var y = d3.event.clientY
-        var html = dataTable.getCellToolTip(d.rowid, d.colid)
-
-        d3.select("#tooltip")
-          .style('left', x + 'px')
-          .style('top', y + 'px')                   
-          .html(html)
-        
-        d3.select("#tooltip").classed("hidden", false);
-      }
-    })
-    .on('mousemove', d => {
-      if (dataTable.showTooltip  && d.cell_style.includes('measure')) {
-        var tooltip = d3.select('#tooltip')
-        var x = d3.event.clientX < chartCentreX ? d3.event.pageX + 10 : d3.event.pageX - tooltip.node().getBoundingClientRect().width - 10
-        var y = d3.event.clientY < chartCentreY ? d3.event.pageY + 10 : d3.event.pageY - tooltip.node().getBoundingClientRect().height - 10
-
-        tooltip
-            .style('left', x + 'px')
-            .style('top', y + 'px')
-      }
-    })
-    .on('mouseout', d => {
-      if (dataTable.showHighlight) {
-        if (!dataTable.transposeTable) {
-          var id = ['col', d.colid].join('').replace('.', '')
-        } else {
-          var id = ['col', d.rowid].join('').replace('.', '')
-        }
-        var colElement = element.querySelector('[id="' + id + '"]')
-        if (colElement) colElement.classList.toggle('hover')
-      }
-      
-      if (dataTable.showTooltip  && d.cell_style.includes('measure')) {
-        d3.select("#tooltip").classed("hidden", true)
-      }
-    })
+    .on('mouseover', d => handleCellHoverAndTooltip('enter', d, d3.event, element, element.querySelector('#tooltip') || document.getElementById('tooltip'), dataTable))
+    .on('mousemove', d => handleCellHoverAndTooltip('move', d, d3.event, element, element.querySelector('#tooltip') || document.getElementById('tooltip'), dataTable))
+    .on('mouseout', d => handleCellHoverAndTooltip('leave', d, d3.event, element, element.querySelector('#tooltip') || document.getElementById('tooltip'), dataTable))
     .on('click', function(d) {
       if (d3.event.target.closest('.row-collapse-icon')) {
           d3.event.preventDefault()
@@ -519,15 +485,17 @@ export const renderTable = async function(element, config, dataTable, callbacks 
           return;
       }
 
-      let event = {
-        metaKey: d3.event.metaKey,
-        pageX: d3.event.pageX,
-        pageY: d3.event.pageY - window.pageYOffset
+      if (d.links && d.links.length > 0 && typeof LookerCharts !== 'undefined' && LookerCharts.Utils) {
+        let event = {
+          metaKey: d3.event.metaKey,
+          pageX: d3.event.pageX,
+          pageY: d3.event.pageY - window.pageYOffset
+        }
+        LookerCharts.Utils.openDrillMenu({
+          links: d.links,
+          event: event
+        })
       }
-      LookerCharts.Utils.openDrillMenu({
-        links: d.links,
-        event: event
-      })
     })
 }
 
@@ -545,7 +513,7 @@ export const buildReportTable = function(config, dataTable, updateColumnOrder, u
   }
 
   const redraw = function() {
-    d3.select(element).select('#visContainer').html('')
+    d3.select(element).select('#reportTable').remove()
 
     return renderTable(element, config, dataTable, { updateColumnOrder, updateConfig, redraw }).then(() => {
       const reportTable = element.querySelector('#reportTable')

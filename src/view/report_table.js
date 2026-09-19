@@ -41,7 +41,15 @@ const loadStylesheet = function(link) {
   });
 };
 
+let lastThemeSignature = null;
+
 const loadThemeStyles = function(config) {
+  const sig = `${config.theme || ''}|${config.layout || ''}|${config.customTheme || ''}`;
+  if (sig === lastThemeSignature) {
+    return null;
+  }
+  lastThemeSignature = sig;
+
   let stylesLoadedPromise = null;
   removeStyles();
   if (typeof config.customTheme !== 'undefined' && config.customTheme && config.theme === 'custom') {
@@ -85,15 +93,20 @@ const visPlugin = {
     const clearErrors = (typeof this.clearErrors === 'function' ? this.clearErrors : () => {}).bind(this);
     const addError = (typeof this.addError === 'function' ? this.addError : (err) => console.error(err)).bind(this);
 
+    const skipLookerEcho = () => {
+      element._skipNextUpdate = true
+      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
+      element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false }, 500)
+    }
     const updateColumnOrder = newOrder => {
+      Object.assign(config, { columnOrder: newOrder })
+      skipLookerEcho()
       trigger('updateConfig', [{ columnOrder: newOrder }])
     }
     const updateConfig = newConfig => {
       Object.assign(config, newConfig)
+      skipLookerEcho()
       if ('hideSubtotals' in newConfig) {
-        element._skipNextUpdate = true
-        if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout)
-        element._skipNextUpdateTimeout = setTimeout(() => { element._skipNextUpdate = false }, 500)
         Object.assign(dataTable, new VisPluginTableModel(data, queryResponse, config))
       }
       trigger('updateConfig', [newConfig])
@@ -152,74 +165,77 @@ const visPlugin = {
   }
 }
 
+export function attachStandaloneTableRunner(plugin) {
+  const rootGlobal = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+  rootGlobal.looker = rootGlobal.looker || {};
+  rootGlobal.looker.table = function(targetElement, options = {}) {
+    let el = targetElement;
+    let opts = options;
+
+    if (targetElement && !targetElement.nodeType && typeof targetElement === 'object' && targetElement.element) {
+      el = targetElement.element;
+      opts = targetElement;
+    }
+
+    if (typeof el === 'string' && typeof document !== 'undefined') {
+      el = document.querySelector(el);
+    }
+
+    if (!el || typeof el.hasChildNodes !== 'function') {
+      console.error('window.looker.table: Target element standard node or selector is required.');
+      return;
+    }
+
+    const data = opts.data || [];
+    const queryResponse = opts.queryResponse || opts;
+    const config = opts.config || {};
+    const details = opts.details || {};
+    const done = opts.done || (() => {});
+
+    const normalizedQueryResponse = Object.assign({}, queryResponse);
+    if (normalizedQueryResponse.fields) {
+      normalizedQueryResponse.fields = Object.assign({}, normalizedQueryResponse.fields);
+      normalizedQueryResponse.fields.dimension_like = normalizedQueryResponse.fields.dimension_like || normalizedQueryResponse.fields.dimensions || [];
+      normalizedQueryResponse.fields.measure_like = normalizedQueryResponse.fields.measure_like || [
+        ...(normalizedQueryResponse.fields.measures || []),
+        ...(normalizedQueryResponse.fields.table_calculations || [])
+      ];
+      normalizedQueryResponse.fields.pivots = normalizedQueryResponse.fields.pivots || [];
+    } else {
+      normalizedQueryResponse.fields = { dimension_like: [], measure_like: [], pivots: [] };
+    }
+
+    if (plugin.id === 'report_table_react' ? !el._reactRoot : !el.hasChildNodes()) {
+      plugin.create(el, config);
+    }
+
+    plugin.updateAsync(data, el, config, normalizedQueryResponse, details, done);
+
+    return {
+      element: el,
+      asExcel: () => getTableExcelDataUrl(el),
+      downloadExcel: (filename) => {
+        const url = getTableExcelDataUrl(el);
+        if (!url) return null;
+        if (typeof window !== 'undefined' && window.document) {
+          const downloadRef = document.createElement("a");
+          downloadRef.href = url;
+          downloadRef.download = filename || `table-${new Date().toISOString().slice(0, 10)}.xls`;
+          document.body.appendChild(downloadRef);
+          downloadRef.click();
+          document.body.removeChild(downloadRef);
+        }
+        return url;
+      }
+    };
+  };
+}
+
 if (typeof looker === 'undefined') {
   global.looker = { plugins: { visualizations: { add: () => {} } } };
 }
 
 looker.plugins.visualizations.add(visPlugin);
+attachStandaloneTableRunner(visPlugin);
 
-const rootGlobal = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
-rootGlobal.looker = rootGlobal.looker || {};
-rootGlobal.looker.table = function(targetElement, options = {}) {
-  let el = targetElement;
-  let opts = options;
-
-  if (targetElement && !targetElement.nodeType && typeof targetElement === 'object' && targetElement.element) {
-    el = targetElement.element;
-    opts = targetElement;
-  }
-
-  if (typeof el === 'string' && typeof document !== 'undefined') {
-    el = document.querySelector(el);
-  }
-
-  if (!el || typeof el.hasChildNodes !== 'function') {
-    console.error('window.looker.table: Target element standard node or selector is required.');
-    return;
-  }
-
-  const data = opts.data || [];
-  const queryResponse = opts.queryResponse || opts;
-  const config = opts.config || {};
-  const details = opts.details || {};
-  const done = opts.done || (() => {});
-
-  const normalizedQueryResponse = Object.assign({}, queryResponse);
-  if (normalizedQueryResponse.fields) {
-    normalizedQueryResponse.fields = Object.assign({}, normalizedQueryResponse.fields);
-    normalizedQueryResponse.fields.dimension_like = normalizedQueryResponse.fields.dimension_like || normalizedQueryResponse.fields.dimensions || [];
-    normalizedQueryResponse.fields.measure_like = normalizedQueryResponse.fields.measure_like || [
-      ...(normalizedQueryResponse.fields.measures || []),
-      ...(normalizedQueryResponse.fields.table_calculations || [])
-    ];
-    normalizedQueryResponse.fields.pivots = normalizedQueryResponse.fields.pivots || [];
-  } else {
-    normalizedQueryResponse.fields = { dimension_like: [], measure_like: [], pivots: [] };
-  }
-
-  if (!el.hasChildNodes()) {
-    visPlugin.create(el, config);
-  }
-
-  visPlugin.updateAsync(data, el, config, normalizedQueryResponse, details, done);
-
-  return {
-    element: el,
-    asExcel: () => getTableExcelDataUrl(el),
-    downloadExcel: (filename) => {
-      const url = getTableExcelDataUrl(el);
-      if (!url) return null;
-      if (typeof window !== 'undefined' && window.document) {
-        const downloadRef = document.createElement("a");
-        downloadRef.href = url;
-        downloadRef.download = filename || `table-${new Date().toISOString().slice(0, 10)}.xls`;
-        document.body.appendChild(downloadRef);
-        downloadRef.click();
-        document.body.removeChild(downloadRef);
-      }
-      return url;
-    }
-  };
-};
-
-export { getHeaderCellSortInfo, visPlugin }
+export { getHeaderCellSortInfo, visPlugin, loadThemeStyles, removeStyles, themes, loadStylesheet }

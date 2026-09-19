@@ -1,0 +1,10 @@
+{
+  "name": "report-table-js",
+  "version": "1.0.0",
+  "description": "Report table core JS model and D3 renderer",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "webpack --config webpack.config.js"
+  }
+}
