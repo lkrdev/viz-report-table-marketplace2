@@ -33,18 +33,25 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     | QueryResponse
     | undefined;
 
-  if (typeof window !== "undefined" && tileSDK) {
-    (window as any).LookerCharts = {
-      Utils: {
-        openDrillMenu: ({ links, event }: any) =>
-          tileSDK.openDrillMenu({ links }, event),
-      },
+  useEffect(() => {
+    if (typeof window !== "undefined" && tileSDK) {
+      (window as any).LookerCharts = {
+        Utils: {
+          openDrillMenu: ({ links, event }: any) =>
+            tileSDK.openDrillMenu({ links }, event),
+        },
+      };
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).LookerCharts;
+      }
     };
-  }
+  }, [tileSDK]);
 
   useEffect(() => {
-    if (!queryResponse) return;
-    if ((queryResponse?.fields?.pivots?.length ?? 0) > 2) {
+    const pivotCount = queryResponse?.fields?.pivots?.length ?? 0;
+    if (pivotCount > 2) {
       tileSDK?.addErrors?.({
         title: "Max Two Pivots",
         message: "This visualization accepts no more than 2 pivot fields.",
