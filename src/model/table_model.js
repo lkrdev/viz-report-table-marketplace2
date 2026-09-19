@@ -98,7 +98,7 @@ class VisPluginTableModel {
     this.showTooltip = config.showTooltip || false
     this.showHighlight = config.showHighlight || false
     this.genericLabelForSubtotals = config.genericLabelForSubtotals || false
-    this.subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+    this.subtotalStyle = this.addRowSubtotals ? (config.subtotalStyle || config.subtotal_style || 'simple') : 'simple'
     this.arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
     this.hideZeroCols = config.hideZeroCols || false
     this.hideNullDimensionCols = config.hideNullDimensionCols || config.hideNullDimensions || config.hideNullDimensionColumns || config.hideNullDims || false

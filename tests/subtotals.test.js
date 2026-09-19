@@ -375,6 +375,15 @@ describe('Subtotals option bug reproduction', () => {
     expect(visiblePartialDimCols.length).toBe(2);
     expect(visiblePartialDimCols[0].getHeaderCellLabelByType('field')).toBe('History Created Month');
     expect(visiblePartialDimCols[1].getHeaderCellLabelByType('field')).toBe('History Category');
+
+    // When rowSubtotals is false, subtotalStyle: 'collapsed' should be ignored and all dimension columns remain visible
+    const modelSubtotalsOff = new VisPluginTableModel(sampleRows, metadata, {
+      rowSubtotals: false,
+      subtotalDepth: '(all)',
+      subtotalStyle: 'collapsed'
+    });
+    expect(modelSubtotalsOff.subtotalStyle).toBe('simple');
+    expect(modelSubtotalsOff.columns.filter(c => c.isDimension && !c.hide).length).toBe(2);
   });
 });
 

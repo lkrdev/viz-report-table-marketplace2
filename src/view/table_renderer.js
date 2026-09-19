@@ -284,7 +284,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
           if (row.type === 'subtotal' && dataTable.subtotalsOnTop) {
               classes += ' subtotal-top subtotals-on-top';
           }
-          const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+          const subtotalStyle = dataTable.subtotalStyle
           if (subtotalStyle === 'collapsed') {
               let depth = 0;
               if (row.type === 'subtotal') {
@@ -358,7 +358,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       if (d.cell_style && d.cell_style.includes('dimension')) {
           const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
           if (isFirstCol) {
-              const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+              const subtotalStyle = dataTable.subtotalStyle
               if (d.cell_style.includes('subtotal') && String(d.value).indexOf('Subtotal|Others') === -1) {
                   const rowPath = d.rowid.substring(9);
                   var isCollapsed = false;
@@ -391,7 +391,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
     .style('text-align', d => d.align)
     .style('font-size', config.bodyFontSize + 'px')
     .style('padding-left', (d, i, nodes) => {
-      const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+      const subtotalStyle = dataTable.subtotalStyle
       if (subtotalStyle === 'collapsed' && d.cell_style && d.cell_style.includes('dimension')) {
         const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
         if (isFirstCol) {
@@ -426,7 +426,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         if (!classes.includes('subtotals-on-top')) classes.push('subtotals-on-top')
       }
 
-      const subtotalStyle = config.subtotalStyle || config.subtotal_style || 'simple'
+      const subtotalStyle = dataTable.subtotalStyle
       if (subtotalStyle === 'collapsed' && d.cell_style && d.cell_style.includes('dimension')) {
         const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
         if (isFirstCol) {
