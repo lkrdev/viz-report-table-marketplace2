@@ -32,6 +32,10 @@ const sharedResolve = {
   extensions: ['.tsx', '.ts', '.js', '.jsx'],
   alias: {
     'report-table-js': path.resolve(__dirname, 'src/report_table.js'),
+    'report-table-react': path.resolve(__dirname, 'packages/report-table-react/index.tsx'),
+  },
+  fallback: {
+    buffer: false,
   },
 };
 
@@ -62,6 +66,19 @@ module.exports = [
     entry: path.resolve(__dirname, 'packages/report-table-react/vis_react_plugin.tsx'),
     output: {
       filename: 'report_table_react.js',
+      path: path.resolve(__dirname, 'dist'),
+    },
+    devtool: 'source-map',
+    resolve: sharedResolve,
+    module: {
+      rules: sharedModuleRules,
+    },
+  },
+  {
+    name: 'report-table-extension',
+    entry: path.resolve(__dirname, 'packages/report-table-extension/index.tsx'),
+    output: {
+      filename: 'report_table_extension.js',
       path: path.resolve(__dirname, 'dist'),
     },
     devtool: 'source-map',

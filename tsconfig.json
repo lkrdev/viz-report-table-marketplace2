@@ -12,7 +12,8 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "report-table-js": ["packages/report-table-js"]
+      "report-table-js": ["packages/report-table-js"],
+      "report-table-react": ["packages/report-table-react"]
     }
   },
   "include": ["packages"],

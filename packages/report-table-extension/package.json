@@ -1,0 +1,18 @@
+{
+  "name": "report-table-extension",
+  "version": "1.0.0",
+  "description": "Looker Visualization Extension using report-table-react",
+  "main": "index.tsx",
+  "types": "index.tsx",
+  "scripts": {
+    "build": "webpack --config ../../webpack.config.js --config-name report-table-extension"
+  },
+  "dependencies": {
+    "@looker/extension-sdk": "^26.12.0",
+    "report-table-react": "1.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  }
+}
