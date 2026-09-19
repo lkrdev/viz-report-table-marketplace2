@@ -43,10 +43,14 @@ const loadStylesheet = function(link) {
 
 let lastThemeSignature = null;
 
-const loadThemeStyles = function(config) {
+const loadThemeStyles = function(config, element = null) {
   const sig = `${config.theme || ''}|${config.layout || ''}|${config.customTheme || ''}`;
-  if (sig === lastThemeSignature) {
+  const prevSig = element ? element._lastThemeSignature : lastThemeSignature;
+  if (sig === prevSig) {
     return null;
+  }
+  if (element) {
+    element._lastThemeSignature = sig;
   }
   lastThemeSignature = sig;
 
@@ -149,7 +153,7 @@ const visPlugin = {
       }, config)
     }
 
-    const stylesLoadedPromise = loadThemeStyles(config);
+    const stylesLoadedPromise = loadThemeStyles(config, element);
     var dataTable = new VisPluginTableModel(data, queryResponse, config)
     trigger('registerOptions', dataTable.getConfigOptions())
     buildReportTable(config, dataTable, updateColumnOrder, updateConfig, element, stylesLoadedPromise).then(() => {

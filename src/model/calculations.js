@@ -345,7 +345,7 @@ export function addSubTotals () {
           const { colspan, rowspan } = dimColspans[column.id] || { colspan: -1, rowspan: -1 };
           var cell_style = column.modelField.is_numeric ? ['total', 'subtotal', 'numeric', 'dimension'] : ['total', 'subtotal', 'nonNumeric', 'dimension']
           if (this.subtotalsOnTop) { cell_style.push('subtotal-top', 'subtotals-on-top') }
-          var existingSubCell = this.subtotals_data[subtotalRow.id]?.data[column.id]
+          var existingSubCell = this.subtotals_data?.[subtotalRow.id]?.data?.[column.id]
           var cell = new DataCell({ 
             value: '',
             links: existingSubCell?.links || [],

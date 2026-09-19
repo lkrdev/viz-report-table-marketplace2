@@ -284,7 +284,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
   if (config.rowSubtotals && config.allowSubtotalToggle) {
     const toggleSubtotalsBtn = addBtn("toggleSubtotalsBtn", config.hideSubtotals ? "Show Subtotals" : "Hide Subtotals", () => {
       if (updateConfig) updateConfig({ hideSubtotals: !config.hideSubtotals });
-      if (redraw) redraw();
+      if (redraw && !element._isReactManaged) redraw();
     });
     addStrokeSvg(toggleSubtotalsBtn, config.hideSubtotals
       ? '<path d="M18 4H6l6 8-6 8h12" opacity="0.45"></path><line x1="3" y1="3" x2="21" y2="21"></line>'
@@ -394,8 +394,8 @@ export function handleCellHoverAndTooltip(action, d, event, rootEl, tooltipEl, d
     if (dataTable.showTooltip && isMeasure && tooltipEl) {
       if (action === 'enter' && event) {
         tooltipEl.innerHTML = dataTable.getCellToolTip(d.rowid, d.colid);
-        tooltipEl.style.left = `${event.clientX}px`;
-        tooltipEl.style.top = `${event.clientY}px`;
+        tooltipEl.style.left = `${(event.pageX ?? event.clientX) + 10}px`;
+        tooltipEl.style.top = `${(event.pageY ?? event.clientY) + 10}px`;
         tooltipEl.classList.remove('hidden');
       } else {
         tooltipEl.classList.add('hidden');

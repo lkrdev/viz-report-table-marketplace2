@@ -210,7 +210,7 @@ export function handleCellHoverAndTooltip(
   dataTable: VisPluginTableModel
 ): void;
 export function attachStandaloneTableRunner(plugin: any): void;
-export function loadThemeStyles(config: VisConfig): Promise<void> | null;
+export function loadThemeStyles(config: VisConfig, element?: HTMLElement | null): Promise<void> | null;
 export function removeStyles(): void;
 export function downloadTableAsExcel(element: HTMLElement): Promise<string | null>;
 export function getTableExcelDataUrl(element: HTMLElement): string | null;

@@ -86,23 +86,26 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   }, [data, queryResponse, structuralSignature]);
 
   const applyConfigUpdate = (newConfig: Partial<VisConfig>) => {
-    Object.assign(effectiveConfig, newConfig);
-    if ('hideSubtotals' in newConfig) {
-      Object.assign(dataTable, new VisPluginTableModel(data, queryResponse, effectiveConfig));
-    }
     setLocalConfigOverrides((prev) => ({ ...prev, ...newConfig }));
     prevConfigRef.current = { ...prevConfigRef.current, ...newConfig };
     updateConfig(newConfig);
   };
 
+  const lastRegisteredOptionsSigRef = useRef<string>('');
   useEffect(() => {
-    registerOptions(dataTable.getConfigOptions());
-  }, [queryResponse, effectiveConfig.theme]);
+    const opts = dataTable.getConfigOptions();
+    const sig = JSON.stringify(Object.keys(opts));
+    if (sig !== lastRegisteredOptionsSigRef.current) {
+      lastRegisteredOptionsSigRef.current = sig;
+      registerOptions(opts);
+    }
+  }, [dataTable, registerOptions]);
 
   // Build table via shared D3 renderer only when dataTable (structural config / data) changes
   useLayoutEffect(() => {
     if (!rootRef.current) return;
-    const stylesPromise = loadThemeStyles(effectiveConfig);
+    (rootRef.current as any)._isReactManaged = true;
+    const stylesPromise = loadThemeStyles(effectiveConfig, rootRef.current);
     buildReportTable(
       effectiveConfig,
       dataTable,
@@ -118,7 +121,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   // Surgically update existing DOM on view-only changes (collapse/uncollapse, sticky headers/columns, theme) without rebuilding table
   useLayoutEffect(() => {
     if (!rootRef.current || !rootRef.current.querySelector('#reportTable')) return;
-    const stylesPromise = loadThemeStyles(effectiveConfig);
+    const stylesPromise = loadThemeStyles(effectiveConfig, rootRef.current);
     applyCollapsedConfigToRows(rootRef.current, effectiveConfig, dataTable);
     if (stylesPromise && typeof stylesPromise.then === 'function') {
       stylesPromise.then(() => onDone?.());
@@ -126,6 +129,8 @@ export const ReportTable: React.FC<ReportTableProps> = ({
       onDone?.();
     }
   }, [
+    dataTable,
+    onDone,
     effectiveConfig.collapsedSubtotals,
     effectiveConfig.expandSubtotals,
     effectiveConfig.startFolded,
