@@ -171,7 +171,10 @@ const visPlugin = {
 
 export function attachStandaloneTableRunner(plugin) {
   const rootGlobal = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
-  rootGlobal.looker = rootGlobal.looker || {};
+  rootGlobal.looker = rootGlobal.looker || { plugins: { visualizations: { add: () => {} } } };
+  if (rootGlobal.looker.plugins && rootGlobal.looker.plugins.visualizations && typeof rootGlobal.looker.plugins.visualizations.add === 'function') {
+    rootGlobal.looker.plugins.visualizations.add(plugin);
+  }
   rootGlobal.looker.table = function(targetElement, options = {}) {
     let el = targetElement;
     let opts = options;

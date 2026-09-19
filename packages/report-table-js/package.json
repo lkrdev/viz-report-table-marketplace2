@@ -5,6 +5,6 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "webpack --config webpack.config.js"
+    "build": "webpack --config ../../webpack.config.js --config-name report-table-js"
   }
 }

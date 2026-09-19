@@ -1,12 +1,12 @@
-import React from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import React from "react";
+import { Root, createRoot } from "react-dom/client";
 import {
-  VisPluginTableModel,
-  VisConfig,
   QueryResponse,
+  VisConfig,
   attachStandaloneTableRunner,
-} from 'report-table-js';
-import { ReportTable } from './ReportTable';
+  visPlugin,
+} from "report-table-js";
+import { ReportTable } from "./ReportTable";
 
 interface VisElement extends HTMLElement {
   _reactRoot?: Root;
@@ -16,87 +16,57 @@ interface VisElement extends HTMLElement {
 }
 
 export const visReactPlugin = {
-  id: 'report_table_react',
-  label: 'Report Table (React)',
-  options: VisPluginTableModel.getCoreConfigOptions(),
-  trigger: function (..._args: any[]) {},
-  clearErrors: function () {},
-  addError: function (err: any) {
-    console.error(err);
-  },
+  ...visPlugin,
+  id: "report_table_react",
+  label: "Report Table (React)",
 
-  create: function (element: VisElement, _config: VisConfig) {
-    element.style.position = 'relative';
-    element.style.margin = '0';
-    element.style.padding = '0';
-    element.innerHTML = '';
-
-    const container = document.createElement('div');
-    container.className = 'report-table-react-root';
-    container.style.width = '100%';
-    container.style.height = '100%';
+  create(element: VisElement, _config: VisConfig) {
+    Object.assign(element.style, {
+      position: "relative",
+      margin: "0",
+      padding: "0",
+    });
+    element.innerHTML = "";
+    const container = document.createElement("div");
+    container.className = "report-table-react-root";
+    Object.assign(container.style, { width: "100%", height: "100%" });
     element.appendChild(container);
-
     element._reactContainer = container;
     element._reactRoot = createRoot(container);
   },
 
-  updateAsync: function (
+  updateAsync(
     data: any[],
     element: VisElement,
     config: VisConfig,
     queryResponse: QueryResponse,
     details: Record<string, any>,
-    done: () => void
+    done: () => void,
   ) {
     if (element._skipNextUpdate) {
       element._skipNextUpdate = false;
-      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout);
-      if (typeof done === 'function') done();
+      clearTimeout(element._skipNextUpdateTimeout);
+      done?.();
       return;
     }
 
-    const trigger = (typeof this.trigger === 'function' ? this.trigger : () => {}).bind(this);
-    const clearErrors = (
-      typeof this.clearErrors === 'function' ? this.clearErrors : () => {}
+    const trigger = (
+      typeof this.trigger === "function" ? this.trigger : () => {}
     ).bind(this);
-    const addError = (
-      typeof this.addError === 'function' ? this.addError : (err: any) => console.error(err)
-    ).bind(this);
+    this.clearErrors?.();
 
-    clearErrors();
-
-    if (
-      queryResponse &&
-      queryResponse.fields &&
-      queryResponse.fields.pivots &&
-      queryResponse.fields.pivots.length > 2
-    ) {
-      addError({
-        title: 'Max Two Pivots',
-        message: 'This visualization accepts no more than 2 pivot fields.',
+    if ((queryResponse?.fields?.pivots?.length ?? 0) > 2) {
+      this.addError?.({
+        title: "Max Two Pivots",
+        message: "This visualization accepts no more than 2 pivot fields.",
       });
-      if (typeof done === 'function') done();
+      done?.();
       return;
     }
 
-    if (typeof config.columnOrder === 'undefined') {
-      trigger('updateConfig', [{ columnOrder: {} }]);
+    if (typeof config.columnOrder === "undefined") {
+      trigger("updateConfig", [{ columnOrder: {} }]);
     }
-
-    const handleUpdateConfig = (newConfig: Partial<VisConfig>) => {
-      Object.assign(config, newConfig);
-      element._skipNextUpdate = true;
-      if (element._skipNextUpdateTimeout) clearTimeout(element._skipNextUpdateTimeout);
-      element._skipNextUpdateTimeout = setTimeout(() => {
-        element._skipNextUpdate = false;
-      }, 500);
-      trigger('updateConfig', [newConfig]);
-    };
-
-    const handleRegisterOptions = (options: Record<string, any>) => {
-      trigger('registerOptions', options);
-    };
 
     if (!element._reactRoot || !element._reactContainer) {
       this.create(element, config);
@@ -108,28 +78,20 @@ export const visReactPlugin = {
         queryResponse={queryResponse}
         config={{ ...config }}
         details={details}
-        updateConfig={handleUpdateConfig}
-        registerOptions={handleRegisterOptions}
+        updateConfig={(newConfig) => {
+          Object.assign(config, newConfig);
+          element._skipNextUpdate = true;
+          clearTimeout(element._skipNextUpdateTimeout);
+          element._skipNextUpdateTimeout = setTimeout(() => {
+            element._skipNextUpdate = false;
+          }, 500);
+          trigger("updateConfig", [newConfig]);
+        }}
+        registerOptions={(opts) => trigger("registerOptions", opts)}
         onDone={done}
-      />
+      />,
     );
   },
 };
-
-const globalObj: any =
-  typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {};
-
-if (typeof globalObj.looker === 'undefined') {
-  globalObj.looker = { plugins: { visualizations: { add: () => {} } } };
-}
-
-if (
-  globalObj.looker &&
-  globalObj.looker.plugins &&
-  globalObj.looker.plugins.visualizations &&
-  typeof globalObj.looker.plugins.visualizations.add === 'function'
-) {
-  globalObj.looker.plugins.visualizations.add(visReactPlugin);
-}
 
 attachStandaloneTableRunner(visReactPlugin);

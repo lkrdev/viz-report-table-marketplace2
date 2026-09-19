@@ -5,7 +5,7 @@
   "main": "index.tsx",
   "types": "index.tsx",
   "scripts": {
-    "build": "webpack --config webpack.config.js"
+    "build": "webpack --config ../../webpack.config.js --config-name report-table-react"
   },
   "peerDependencies": {
     "react": ">=16.8.0",

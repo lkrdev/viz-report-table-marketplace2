@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -59,23 +60,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   const [localConfigOverrides, setLocalConfigOverrides] = useState<
     Partial<VisConfig>
   >({});
-  const prevConfigRef = useRef<VisConfig>({ ...config });
 
-  // Clear local overrides only for keys that changed externally from Looker's sidebar
   useEffect(() => {
-    const prev = prevConfigRef.current || {};
-    const next = config || {};
-    const changedExternalKeys = Object.keys(next).filter(
-      (k) => next[k] !== prev[k],
-    );
-    if (changedExternalKeys.length > 0) {
-      setLocalConfigOverrides((curr) => {
-        const updated = { ...curr };
-        changedExternalKeys.forEach((k) => delete updated[k]);
-        return updated;
-      });
-    }
-    prevConfigRef.current = { ...next };
+    setLocalConfigOverrides({});
   }, [config]);
 
   const effectiveConfig: VisConfig = {
@@ -90,21 +77,18 @@ export const ReportTable: React.FC<ReportTableProps> = ({
 
   const structuralSignature = getStructuralConfigSignature(effectiveConfig);
 
-  // Memoize VisPluginTableModel on structural inputs only so view/collapse/theme updates skip model & D3 table rebuild
+  // ponytail: Memoize VisPluginTableModel on structural inputs only so view/collapse/theme updates skip model & D3 table rebuild
   const dataTable = useMemo(() => {
     return new VisPluginTableModel(data, queryResponse, effectiveConfig);
   }, [data, queryResponse, structuralSignature]);
 
-  if (dataTable) {
-    (dataTable as any).config = effectiveConfig;
-  }
+  dataTable.config = effectiveConfig;
 
   const updateConfigRef = useRef(updateConfig);
   updateConfigRef.current = updateConfig;
 
-  const applyConfigUpdate = React.useCallback((newConfig: Partial<VisConfig>) => {
+  const applyConfigUpdate = useCallback((newConfig: Partial<VisConfig>) => {
     setLocalConfigOverrides((prev) => ({ ...prev, ...newConfig }));
-    prevConfigRef.current = { ...prevConfigRef.current, ...newConfig };
     updateConfigRef.current(newConfig);
   }, []);
 
@@ -118,39 +102,34 @@ export const ReportTable: React.FC<ReportTableProps> = ({
     }
   }, [dataTable, registerOptions]);
 
-  const isFullyBuiltRef = useRef(false);
+  const prevDataTableRef = useRef<VisPluginTableModel | null>(null);
 
-  // Build table via shared D3 renderer only when dataTable (structural config / data) changes
   useLayoutEffect(() => {
     if (!rootRef.current) return;
     (rootRef.current as any)._isReactManaged = true;
-    isFullyBuiltRef.current = false;
     const stylesPromise = loadThemeStyles(effectiveConfig, rootRef.current);
-    buildReportTable(
-      effectiveConfig,
-      dataTable,
-      (newOrder: Record<string, number>) =>
-        applyConfigUpdate({ columnOrder: newOrder }),
-      applyConfigUpdate,
-      rootRef.current,
-      stylesPromise,
-    ).then(() => {
-      isFullyBuiltRef.current = true;
-      onDone?.();
-    });
-  }, [dataTable]);
 
-  // Surgically update existing DOM on view-only changes (collapse/uncollapse, sticky headers/columns, theme) without rebuilding table
-  useLayoutEffect(() => {
-    if (!rootRef.current || !rootRef.current.querySelector("#reportTable"))
-      return;
-    if (!isFullyBuiltRef.current) return;
-    const stylesPromise = loadThemeStyles(effectiveConfig, rootRef.current);
-    applyCollapsedConfigToRows(rootRef.current, effectiveConfig, dataTable);
-    if (stylesPromise && typeof stylesPromise.then === "function") {
-      stylesPromise.then(() => onDone?.());
+    if (
+      prevDataTableRef.current !== dataTable ||
+      !rootRef.current.querySelector("#reportTable")
+    ) {
+      prevDataTableRef.current = dataTable;
+      buildReportTable(
+        effectiveConfig,
+        dataTable,
+        (newOrder: Record<string, number>) =>
+          applyConfigUpdate({ columnOrder: newOrder }),
+        applyConfigUpdate,
+        rootRef.current,
+        stylesPromise,
+      ).then(() => onDone?.());
     } else {
-      onDone?.();
+      applyCollapsedConfigToRows(rootRef.current, effectiveConfig, dataTable);
+      if (stylesPromise && typeof stylesPromise.then === "function") {
+        stylesPromise.then(() => onDone?.());
+      } else {
+        onDone?.();
+      }
     }
   }, [
     dataTable,
