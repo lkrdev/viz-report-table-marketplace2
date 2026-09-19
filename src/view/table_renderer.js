@@ -53,7 +53,7 @@ export const getTextWidth = function(text, font = '', defaultFontSize = 12) {
   var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement('canvas'));
   var context = canvas.getContext('2d');
   if (!context) return String(text || '').length * 8;
-  context.font = font || defaultFontSize + 'pt arial';
+  context.font = font || defaultFontSize + 'px arial';
   var metrics = context.measureText(text);
   return metrics.width;
 };
@@ -75,8 +75,8 @@ export const computeColumnTextWidths = function(dataTable, config) {
 
       if (dataTable.subtotalStyle === 'collapsed') {
         const headerLabel = cs.column.getHeaderCellLabelByType('field') || '';
-        const fontHeader = 'bold ' + headerFontSize + 'pt arial';
-        const fontBody = bodyFontSize + 'pt arial';
+        const fontHeader = 'bold ' + headerFontSize + 'px arial';
+        const fontBody = bodyFontSize + 'px arial';
         let maxW = measureText(headerLabel, fontHeader) + 30;
 
         const activeDims = dataTable.dimensions ? dataTable.dimensions.filter(d => !d.isNull && !config['hide|' + d.name] && config['style|' + d.name] !== 'hide') : [];

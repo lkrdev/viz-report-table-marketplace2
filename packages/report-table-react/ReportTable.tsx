@@ -87,6 +87,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   const updateConfigRef = useRef(updateConfig);
   updateConfigRef.current = updateConfig;
 
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   const applyConfigUpdate = useCallback((newConfig: Partial<VisConfig>) => {
     setLocalConfigOverrides((prev) => ({ ...prev, ...newConfig }));
     updateConfigRef.current(newConfig);
@@ -95,7 +98,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   const lastRegisteredOptionsSigRef = useRef<string>("");
   useEffect(() => {
     const opts = dataTable.getConfigOptions();
-    const sig = JSON.stringify(Object.keys(opts));
+    const sig = JSON.stringify(opts);
     if (sig !== lastRegisteredOptionsSigRef.current) {
       lastRegisteredOptionsSigRef.current = sig;
       registerOptions(opts);
@@ -122,18 +125,17 @@ export const ReportTable: React.FC<ReportTableProps> = ({
         applyConfigUpdate,
         rootRef.current,
         stylesPromise,
-      ).then(() => onDone?.());
+      ).then(() => onDoneRef.current?.());
     } else {
       applyCollapsedConfigToRows(rootRef.current, effectiveConfig, dataTable);
       if (stylesPromise && typeof stylesPromise.then === "function") {
-        stylesPromise.then(() => onDone?.());
+        stylesPromise.then(() => onDoneRef.current?.());
       } else {
-        onDone?.();
+        onDoneRef.current?.();
       }
     }
   }, [
     dataTable,
-    onDone,
     effectiveConfig.collapsedSubtotals,
     effectiveConfig.expandSubtotals,
     effectiveConfig.startFolded,

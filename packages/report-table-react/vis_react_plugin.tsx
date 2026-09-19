@@ -35,6 +35,16 @@ export const visReactPlugin = {
     element._reactRoot = createRoot(container);
   },
 
+  destroy(element: VisElement) {
+    if (element._reactRoot) {
+      element._reactRoot.unmount();
+      delete element._reactRoot;
+    }
+    if (element._skipNextUpdateTimeout) {
+      clearTimeout(element._skipNextUpdateTimeout);
+    }
+  },
+
   updateAsync(
     data: any[],
     element: VisElement,
