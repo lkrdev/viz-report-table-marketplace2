@@ -77,7 +77,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({
 
   const structuralSignature = getStructuralConfigSignature(effectiveConfig);
 
-  // ponytail: Memoize VisPluginTableModel on structural inputs only so view/collapse/theme updates skip model & D3 table rebuild
+  // Memoize VisPluginTableModel on structural inputs only so view/collapse/theme updates skip model & D3 table rebuild
   const dataTable = useMemo(() => {
     return new VisPluginTableModel(data, queryResponse, effectiveConfig);
   }, [data, queryResponse, structuralSignature]);

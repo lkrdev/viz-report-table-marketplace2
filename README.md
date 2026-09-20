@@ -22,6 +22,7 @@ A table visualization for single-page summary reports in Looker. Built for PDF e
 
 ## Recent updates
 
+- Added an "Allow User Edits" (`allowUserEdits`) option in the **Theme** tab and a floating "Reset Edits" (`#resetEditsBtn`) action button to persist per-user table overrides (collapsed rows, subtotal toggles, column order) across reloads via Looker's Artifacts API (**Extension installation only**).
 - Added an "Allow Subtotal Toggle" (`allowSubtotalToggle`) option that exposes a floating Sigma (`Σ`) action button on hover to show or hide row subtotals (`hideSubtotals`) on demand.
 - Added collapsed subtotals (`subtotalStyle: 'collapsed'`) with interactive expand and collapse row toggles (`arrowStyle`), hierarchy indentation, and combined header labels.
 - Added a "Subtotals on Top" setting to render row subtotals above line items.
@@ -31,13 +32,32 @@ A table visualization for single-page summary reports in Looker. Built for PDF e
 
 ## Installation
 
-To install this visualization in your Looker instance, add the `visualization` parameter to your project `manifest.lkml` file:
+You can install Report Table in your Looker project `manifest.lkml` either as a standard custom visualization or as a Looker Extension visualization.
+
+### Option 1: Custom Visualization (`report_table.js`)
 
 ```lookml
 visualization: {
   id: "lkrdev-report-table"
   url: "https://cdn.lkr.dev/viz/report-table/latest/report_table.js"
   label: "Report Table"
+}
+```
+
+### Option 2: Looker Extension Visualization (`report_table_extension.js`)
+
+Installing as a Looker Extension enables SDK-backed features such as **Allow User Edits** (per-user configuration persistence via Looker's Artifacts API):
+
+```lookml
+application: report-table-extension {
+  label: "Report Table (Extension)"
+  url: "https://cdn.lkr.dev/viz/report-table/latest/report_table_extension.js"
+  mount_points: {
+    dashboard_vis: yes
+  }
+  entitlements: {
+    core_api_methods: ["me", "artifact", "update_artifacts", "delete_artifact", "search_looks"]
+  }
 }
 ```
 
@@ -94,6 +114,11 @@ When working with multi-level hierarchies (such as Country > State > Category), 
   - When **Row Subtotals** (`rowSubtotals`) is enabled, turning on **Allow Subtotal Toggle** adds a floating Sigma (`Σ`) button (`#toggleSubtotalsBtn`) to the top-right action bar when hovering over the table.
   - Clicking the button toggles `hideSubtotals` between showing and hiding subtotal rows on the fly without modifying the underlying query.
   - If **Allow Subtotal Toggle** is turned off, any hidden toggle state (`hideSubtotals`) is ignored so row subtotals always display when `rowSubtotals` is active.
+- Allow User Edits (`allowUserEdits`, **Extension only**):
+  - Located at the end of the **Theme** tab. This feature **only works when using the Looker Extension visualization (`report_table_extension.js`)**.
+  - When enabled, viewer interactions on a saved Look or Dashboard tile (such as expanding/collapsing rows, toggling subtotals, or reordering columns) are saved per user and per Look/Dashboard tile via Looker's Artifacts API and automatically restored on reload.
+  - When **Allow User Edits** is enabled and a viewer has active overrides, a **Reset Edits** button (`#resetEditsBtn`) appears in the top-right floating action bar to clear saved user edits and restore the base Look/Dashboard configuration.
+  - When turned off, per-user overrides are ignored and viewer changes are not persisted.
 - Arrow Style:
   - `Arrows`: Displays `▲` / `▼` toggle icons.
   - `+/-`: Displays `[-]` / `[+]` toggle buttons.
