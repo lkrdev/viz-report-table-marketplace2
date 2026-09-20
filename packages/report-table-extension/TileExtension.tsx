@@ -139,6 +139,9 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
         if (cancelled) return;
         setArtifactKey(key);
 
+        // Note: In @looker/sdk 4.0 (JS/TS), `artifact(request: IRequestArtifact)` takes a single
+        // `{ namespace, key }` object, unlike `update_artifacts(namespace, body)` and
+        // `delete_artifact(namespace, key)` which take positional arguments.
         const artifacts = await core40SDK.ok(
           core40SDK.artifact({ namespace, key }),
         );
@@ -248,7 +251,10 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
             : existing.value
           : {};
 
-        // Merge incoming partial on top of latest server state so edits in another tab aren't clobbered
+        // Merge incoming partial on top of latest server state so edits in another tab aren't clobbered.
+        // Do NOT replace `...partial` with `...prev` here: `userOverrides` (`prev`) is a sparse diff
+        // that omits keys matching `baseVisConfig`, so spreading `{ ...serverOverrides, ...prev }`
+        // after a user reverts a key back to `baseVisConfig` would resurrect the stale key from `serverOverrides`.
         const mergedDiff = computeConfigDiff(baseVisConfig, {
           ...(serverOverrides && typeof serverOverrides === "object"
             ? serverOverrides
