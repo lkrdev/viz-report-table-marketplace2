@@ -74,6 +74,13 @@ export const tableModelCoreOptions = {
     default: true,
     order: 7
   },
+  allowUserEdits: {
+    section: 'Theme',
+    type: 'boolean',
+    label: "Allow User Edits",
+    default: false,
+    order: 8
+  },
 
   columnOrder: {},
   clientSorts: {},
