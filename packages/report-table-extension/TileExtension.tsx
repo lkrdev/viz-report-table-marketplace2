@@ -56,6 +56,7 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
   const [userOverrides, setUserOverrides] = useState<Partial<VisConfig>>({});
   const [artifactLoaded, setArtifactLoaded] = useState(false);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const latestPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (host) return;
@@ -195,18 +196,18 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
 
     if ((partial as any).resetUserEdits) {
       setUserOverrides({});
-      saveQueueRef.current = saveQueueRef.current
-        .then(async () => {
-          const existingList = await core40SDK.ok(
-            core40SDK.artifact({ namespace, key: artifactKey }),
+      const promise = saveQueueRef.current.then(async () => {
+        const existingList = await core40SDK.ok(
+          core40SDK.artifact({ namespace, key: artifactKey }),
+        );
+        if (existingList?.[0]?.key) {
+          await core40SDK.ok(
+            core40SDK.delete_artifact(namespace, artifactKey),
           );
-          if (existingList?.[0]?.key) {
-            await core40SDK.ok(
-              core40SDK.delete_artifact(namespace, artifactKey),
-            );
-          }
-        })
-        .catch(() => {});
+        }
+      });
+      latestPromiseRef.current = promise;
+      saveQueueRef.current = promise.catch(() => {});
       return;
     }
 
@@ -215,54 +216,58 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
       computeConfigDiff(baseVisConfig, { ...prev, ...partial }),
     );
 
-    saveQueueRef.current = saveQueueRef.current
-      .then(async () => {
-        const existingList = await core40SDK.ok(
-          core40SDK.artifact({ namespace, key: artifactKey }),
-        );
-        const existing = existingList?.[0];
+    const promise = saveQueueRef.current.then(async () => {
+      const existingList = await core40SDK.ok(
+        core40SDK.artifact({ namespace, key: artifactKey }),
+      );
+      const existing = existingList?.[0];
 
-        const serverOverrides = existing?.value
-          ? typeof existing.value === "string"
-            ? JSON.parse(existing.value)
-            : existing.value
-          : {};
+      const serverOverrides = existing?.value
+        ? typeof existing.value === "string"
+          ? JSON.parse(existing.value)
+          : existing.value
+        : {};
 
-        // Merge incoming partial on top of latest server state so edits in another tab aren't clobbered.
-        // Do NOT replace `...partial` with `...prev` here: `userOverrides` (`prev`) is a sparse diff
-        // that omits keys matching `baseVisConfig`, so spreading `{ ...serverOverrides, ...prev }`
-        // after a user reverts a key back to `baseVisConfig` would resurrect the stale key from `serverOverrides`.
-        const mergedDiff = computeConfigDiff(baseVisConfig, {
-          ...(serverOverrides && typeof serverOverrides === "object"
-            ? serverOverrides
-            : {}),
-          ...partial,
-        });
+      // Merge incoming partial on top of latest server state so edits in another tab aren't clobbered.
+      // Do NOT replace `...partial` with `...prev` here: `userOverrides` (`prev`) is a sparse diff
+      // that omits keys matching `baseVisConfig`, so spreading `{ ...serverOverrides, ...prev }`
+      // after a user reverts a key back to `baseVisConfig` would resurrect the stale key from `serverOverrides`.
+      const mergedDiff = computeConfigDiff(baseVisConfig, {
+        ...(serverOverrides && typeof serverOverrides === "object"
+          ? serverOverrides
+          : {}),
+        ...partial,
+      });
+
+      if (latestPromiseRef.current === promise) {
         setUserOverrides(mergedDiff);
+      }
 
-        if (Object.keys(mergedDiff).length === 0) {
-          if (existing?.key) {
-            await core40SDK.ok(
-              core40SDK.delete_artifact(namespace, artifactKey),
-            );
-          }
-          return;
+      if (Object.keys(mergedDiff).length === 0) {
+        if (existing?.key) {
+          await core40SDK.ok(
+            core40SDK.delete_artifact(namespace, artifactKey),
+          );
         }
+        return;
+      }
 
-        await core40SDK.ok(
-          core40SDK.update_artifacts(namespace, [
-            {
-              key: artifactKey,
-              value: JSON.stringify(mergedDiff),
-              content_type: "application/json",
-              ...(existing?.version != null
-                ? { version: existing.version }
-                : {}),
-            },
-          ]),
-        );
-      })
-      .catch(() => {});
+      await core40SDK.ok(
+        core40SDK.update_artifacts(namespace, [
+          {
+            key: artifactKey,
+            value: JSON.stringify(mergedDiff),
+            content_type: "application/json",
+            ...(existing?.version != null
+              ? { version: existing.version }
+              : {}),
+          },
+        ]),
+      );
+    });
+
+    latestPromiseRef.current = promise;
+    saveQueueRef.current = promise.catch(() => {});
   };
 
   useEffect(() => {
