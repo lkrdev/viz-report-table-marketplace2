@@ -118,6 +118,12 @@ When working with multi-level hierarchies (such as Country > State > Category), 
   - Located at the end of the **Theme** tab. This feature **only works when using the Looker Extension visualization (`report_table_extension.js`)**.
   - When enabled, viewer interactions on a saved Look or Dashboard tile (such as expanding/collapsing rows, toggling subtotals, or reordering columns) are saved per user and per Look/Dashboard tile via Looker's Artifacts API and automatically restored on reload.
   - When **Allow User Edits** is enabled and a viewer has active overrides, a **Reset Edits** button (`#resetEditsBtn`) appears in the top-right floating action bar to clear saved user edits and restore the base Look/Dashboard configuration.
+- Save and Apply User Filter State (`allowUserFilters`, **Extension only**):
+  - Located in the **Theme** tab below **Allow User Edits**. This feature **only works on Dashboards when using the Looker Extension visualization (`report_table_extension.js`)** and requires `"dashboard_dashboard_filters"` in `manifest.lkml` `entitlements.core_api_methods`.
+  - When enabled, filter changes on a Dashboard (`tileHostData.dashboardFilters`) are persisted per user and per Dashboard (`user_${userId}_dashboard_${dashboardId}_filters`) via Looker's Artifacts API.
+  - When loading a Dashboard, the extension fetches the dashboard's configured `default_value` for each filter (`dashboard_dashboard_filters`) and applies saved filter values only when the active filter is empty (`""`) or matches the dashboard default—preserving any explicit non-default filter values passed in the URL.
+  - If all saved filters already match the active filters (or during headless PDF/PNG renders where `lookerHostData.isRendering` is true), no filter update or query re-run is triggered.
+  - Clicking the floating **Reset Edits** button (`#resetEditsBtn`) clears saved filter overrides and restores the Dashboard's initial/default filters.
   - When turned off, per-user overrides are ignored and viewer changes are not persisted.
 - Arrow Style:
   - `Arrows`: Displays `▲` / `▼` toggle icons.

@@ -333,7 +333,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
     addStrokeSvg(clearSortsBtn, '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
   }
 
-  if (config.allowUserEdits && config.hasUserEdits) {
+  if ((config.allowUserEdits || config.allowUserFilters) && config.hasUserEdits) {
     const resetEditsBtn = addBtn("resetEditsBtn", "Reset Edits", () => {
       if (updateConfig) updateConfig({ resetUserEdits: true });
       if (redraw && !element._isReactManaged) redraw();
