@@ -84,19 +84,17 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
   const lookerHostData =
     extensionSDK?.lookerHostData ?? (tileSDK as any)?.hostApi?._lookerHostData;
   const namespace = lookerHostData?.extensionId || "report-table-extension";
-  const hostPath = `${lookerHostData?.hostUrl || ""} ${lookerHostData?.route || ""}`;
-  const urlLookId = hostPath.match(/\/looks\/([^/?#\s]+)/)?.[1];
-  const queryServerId = (queryResponse as any)?.server_id;
+  const queryId = (queryResponse as any)?.id ?? (queryResponse as any)?.server_id;
 
   const isDashboardView = Boolean(
     thd?.elementId != null && !thd?.isDashboardEditing,
   );
-  const isCandidateLookView = Boolean(
-    urlLookId || (thd?.isExploring && !lookerHostData?.route && queryServerId),
+  const isLookView = Boolean(
+    !isDashboardView && !thd?.isDashboardEditing && queryId != null,
   );
   const allowUserEdits = Boolean(baseVisConfig.allowUserEdits);
   const canPersistUserEdits =
-    allowUserEdits && (isDashboardView || isCandidateLookView);
+    allowUserEdits && (isDashboardView || isLookView);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,29 +112,11 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
         const userId = user?.id;
         if (!userId || cancelled) return;
 
-        let resolvedLookId = urlLookId;
-        if (!isDashboardView && !resolvedLookId && queryServerId) {
-          const looks = await core40SDK.ok(
-            core40SDK.search_looks({
-              query_id: String(queryServerId),
-              fields: "id",
-            }),
-          );
-          resolvedLookId = looks?.[0]?.id ? String(looks[0].id) : undefined;
-        }
-
-        if (cancelled) return;
-        if (!isDashboardView && !resolvedLookId) {
-          setArtifactKey(null);
-          setUserOverrides({});
-          return;
-        }
-
+        // TODO: Switch `query_${queryId}` to `look_${lookId}` once Looker passes Look ID in extension host data.
         const key = isDashboardView
           ? `user_${userId}_element_${thd.elementId}`
-          : `user_${userId}_look_${resolvedLookId}`;
+          : `user_${userId}_query_${queryId}`;
 
-        if (cancelled) return;
         setArtifactKey(key);
 
         // Note: In @looker/sdk 4.0 (JS/TS), `artifact(request: IRequestArtifact)` takes a single
@@ -175,8 +155,7 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     canPersistUserEdits,
     isDashboardView,
     thd?.elementId,
-    urlLookId,
-    queryServerId,
+    queryId,
     namespace,
   ]);
 
@@ -205,12 +184,10 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
   };
 
   const handleUpdateConfig = (partial: Partial<VisConfig>) => {
-    if (isDashboardView || artifactKey) {
+    if (isDashboardView || isLookView) {
       if (!allowUserEdits || !artifactKey || !core40SDK) {
         return;
       }
-    } else if (isCandidateLookView) {
-      return;
     } else {
       visualizationSDK?.setVisConfig({ ...baseVisConfig, ...partial });
       return;

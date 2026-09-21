@@ -252,7 +252,7 @@ describe("TileExtension", () => {
 
     const setVisConfig = jest.fn();
     let storedArtifact: any = {
-      key: "user_42_look_7",
+      key: "user_42_query_777",
       value: JSON.stringify({ collapsedSubtotals: "2026" }),
       content_type: "application/json",
       version: 10,
@@ -282,7 +282,7 @@ describe("TileExtension", () => {
     const host = {
       lookerHostData: {
         extensionId: "report-table::dev-report-table-extension",
-        hostUrl: "https://example.looker.app/looks/7?toggle=pik",
+        hostUrl: "https://example.looker.app",
       },
       invokeCoreSdk,
       rendered: jest.fn(),
@@ -307,7 +307,10 @@ describe("TileExtension", () => {
             allowUserEdits: true,
             hideSubtotals: false,
           },
-          queryResponse: makeBaseQueryResponse(),
+          queryResponse: {
+            ...makeBaseQueryResponse(),
+            server_id: 777,
+          },
         },
       },
     } as any;
@@ -332,7 +335,7 @@ describe("TileExtension", () => {
       { fields: undefined },
       [
         {
-          key: "user_42_look_7",
+          key: "user_42_query_777",
           value: JSON.stringify({
             collapsedSubtotals: "2026",
             hideSubtotals: true,
@@ -599,7 +602,7 @@ describe("TileExtension", () => {
 
     const configureVisualization = jest.fn();
     let storedArtifact: any = {
-      key: "user_99_look_1",
+      key: "user_99_query_qid_123",
       value: JSON.stringify({ hideSubtotals: true }),
       content_type: "application/json",
       version: 2,
@@ -609,9 +612,6 @@ describe("TileExtension", () => {
       async (method: string, path: string, params?: any, body?: any) => {
         if (method === "GET" && path === "/user") {
           return { ok: true, value: { id: "99" } };
-        }
-        if (method === "GET" && path === "/looks/search") {
-          return { ok: true, value: [{ id: "1" }] };
         }
         if (
           method === "GET" &&
@@ -691,7 +691,7 @@ describe("TileExtension", () => {
     expect(invokeCoreSdk).toHaveBeenCalledWith(
       "DELETE",
       "/artifact/report-table%3A%3Adev-report-table-extension",
-      { key: "user_99_look_1" },
+      { key: "user_99_query_qid_123" },
       null,
       undefined,
       expect.any(Object),
