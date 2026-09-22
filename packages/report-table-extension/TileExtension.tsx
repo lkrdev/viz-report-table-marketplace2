@@ -69,15 +69,8 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     const withSavedDefaults: Record<string, any> = {};
     for (const [k, opt] of Object.entries(opts)) {
       withSavedDefaults[k] =
-        opt && typeof opt === "object"
-          ? {
-              ...opt,
-              ...(baseVisConfig[k] !== undefined ? { default: baseVisConfig[k] } : {}),
-              ...(k === "allowUserEdits" || k === "allowUserFilters" ? { hidden: false } : {}),
-              ...(k === "allowDimensionOrder" || k === "allowMeasureOrder"
-                ? { hidden: !baseVisConfig.allowUserEdits }
-                : {}),
-            }
+        opt && typeof opt === "object" && baseVisConfig[k] !== undefined
+          ? { ...opt, default: baseVisConfig[k] }
           : opt;
     }
     visualizationSDK.configureVisualization(withSavedDefaults);
@@ -132,7 +125,7 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
       <ReportTable
         data={queryResponse.data || []}
         queryResponse={queryResponse}
-        config={effectiveVisConfig}
+        config={{ ...effectiveVisConfig, isExtension: true }}
         updateConfig={handleUpdateConfig}
         registerOptions={handleRegisterOptions}
         onDone={() => extensionSDK?.rendered?.()}

@@ -340,6 +340,12 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
+  if (this.config.isExtension) {
+    newOptions.allowUserEdits.hidden = false
+    newOptions.allowUserFilters.hidden = false
+    newOptions.allowDimensionOrder.hidden = !this.config.allowUserEdits
+    newOptions.allowMeasureOrder.hidden = !this.config.allowUserEdits
+  }
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {
