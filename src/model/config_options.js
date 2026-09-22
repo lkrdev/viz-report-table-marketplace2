@@ -81,6 +81,13 @@ export const tableModelCoreOptions = {
     default: false,
     order: 8
   },
+  allowUserFilters: {
+    section: 'Theme',
+    type: 'boolean',
+    label: "Save and Apply User Filter State",
+    default: false,
+    order: 9
+  },
 
   columnOrder: {},
   clientSorts: {},
