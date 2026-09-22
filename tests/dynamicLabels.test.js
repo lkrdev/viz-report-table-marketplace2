@@ -89,7 +89,7 @@ describe('Dynamic label and config option handling', () => {
     expect(lookerThemeModel.getConfigOptions().customTheme.hidden).toBe(true);
   });
 
-  it('places Theme options under section "Theme" and hides allowDimensionOrder and allowMeasureOrder (display_size: "half") unless allowUserEdits is enabled', () => {
+  it('places Theme options under section "Theme" and disables allowDimensionOrder and allowMeasureOrder (display_size: "half") via disabledReason unless allowUserEdits is enabled', () => {
     const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
 
     const defaultModel = new VisPluginTableModel(rows, metadata, {});
@@ -98,15 +98,20 @@ describe('Dynamic label and config option handling', () => {
     expect(defaultOpts.allowUserEdits.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.display_size).toBe('half');
-    expect(defaultOpts.allowDimensionOrder.hidden).toBe(true);
+    expect(defaultOpts.allowDimensionOrder.disabled).toBe(true);
+    expect(defaultOpts.allowDimensionOrder.disabledReason({})).toBe('Requires "Allow User Edits" to be enabled.');
     expect(defaultOpts.allowMeasureOrder.section).toBe('Theme');
     expect(defaultOpts.allowMeasureOrder.display_size).toBe('half');
-    expect(defaultOpts.allowMeasureOrder.hidden).toBe(true);
+    expect(defaultOpts.allowMeasureOrder.disabled).toBe(true);
+    expect(defaultOpts.allowMeasureOrder.disabledReason({})).toBe('Requires "Allow User Edits" to be enabled.');
 
     const editsEnabledModel = new VisPluginTableModel(rows, metadata, { allowUserEdits: true });
     const enabledOpts = editsEnabledModel.getConfigOptions();
-    expect(enabledOpts.allowDimensionOrder.hidden).toBe(false);
-    expect(enabledOpts.allowMeasureOrder.hidden).toBe(false);
+    expect(enabledOpts.allowDimensionOrder.disabled).toBe(false);
+    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true })).toBeUndefined();
+    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true, rowSubtotals: true })).toBe('Requires "Row Subtotals" to be disabled.');
+    expect(enabledOpts.allowMeasureOrder.disabled).toBe(false);
+    expect(enabledOpts.allowMeasureOrder.disabledReason({ allowUserEdits: true })).toBeUndefined();
   });
 
   it('reorders dimensions (when allowDimensionOrder is on and rowSubtotals is off) and measures (when allowMeasureOrder is on) independently', () => {

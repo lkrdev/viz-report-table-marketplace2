@@ -201,6 +201,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         .style("left", xPosition + "px")
         .style("top", yPosition + "px")
         .style("z-index", "1000")
+        .style("pointer-events", "none")
         .html(html)
         .classed("hidden", false);
 

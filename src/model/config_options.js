@@ -1,4 +1,4 @@
-const clone = x => x === undefined ? undefined : (typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x)))
+const clone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x))
 
 export const tableModelCoreOptions = {
   theme: {
@@ -86,18 +86,26 @@ export const tableModelCoreOptions = {
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Dimensions",
-    hidden: true,
     default: false,
-    order: 8.4
+    order: 8.4,
+    disabledReason: function(config) {
+      if (!config.allowUserEdits) return 'Requires "Allow User Edits" to be enabled.'
+      if (config.rowSubtotals) return 'Requires "Row Subtotals" to be disabled.'
+      if (config.indexColumn) return 'Requires "Use Last Field Only" to be disabled.'
+      return undefined
+    }
   },
   allowMeasureOrder: {
     section: 'Theme',
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Measures",
-    hidden: true,
     default: false,
-    order: 8.5
+    order: 8.5,
+    disabledReason: function(config) {
+      if (!config.allowUserEdits) return 'Requires "Allow User Edits" to be enabled.'
+      return undefined
+    }
   },
   allowUserFilters: {
     section: 'Theme',
@@ -338,8 +346,10 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
-  newOptions.allowDimensionOrder.hidden = !this.config.allowUserEdits
-  newOptions.allowMeasureOrder.hidden = !this.config.allowUserEdits
+  newOptions.allowDimensionOrder.disabledReason = tableModelCoreOptions.allowDimensionOrder.disabledReason
+  newOptions.allowMeasureOrder.disabledReason = tableModelCoreOptions.allowMeasureOrder.disabledReason
+  newOptions.allowDimensionOrder.disabled = Boolean(newOptions.allowDimensionOrder.disabledReason(this.config))
+  newOptions.allowMeasureOrder.disabled = Boolean(newOptions.allowMeasureOrder.disabledReason(this.config))
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {

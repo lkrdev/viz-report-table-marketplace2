@@ -852,7 +852,9 @@ class VisPluginTableModel {
       column.levels.forEach(level => {
         level.colspan = 1
         level.rowspan = 1
-        level.cell_style = level.cell_style.filter(s => s !== 'merged')
+        if (Array.isArray(level.cell_style)) {
+          level.cell_style = level.cell_style.filter(s => s !== 'merged')
+        }
       })
       var leaf = {
         id: column.id,
@@ -1021,7 +1023,7 @@ class VisPluginTableModel {
       this.columns.forEach(col => {
         var isTargetGroup = groupType === 'dimension'
           ? (col.isDimension && col.id !== INDEX_COLUMN)
-          : (col.modelField.type === 'measure' && !col.super)
+          : (col.modelField && col.modelField.type === 'measure' && !col.super)
         if (isTargetGroup && typeof col.pos === 'number') {
           if (col.pos >= from && col.pos < from + 10) {
             col.pos += shift

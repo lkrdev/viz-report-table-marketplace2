@@ -671,7 +671,7 @@ export function createVarianceColumn (colpair) {
     column.hide = !this.config['var_pct|' + baseline.modelField.name]
   }
 
-  if (this.allowColumnOrder && this.config.columnOrder && typeof this.config.columnOrder[column.id] !== 'undefined') {
+  if (this.allowMeasureOrder && this.config.columnOrder && typeof this.config.columnOrder[column.id] !== 'undefined') {
     column.pos = this.config.columnOrder[column.id]
   } 
 
