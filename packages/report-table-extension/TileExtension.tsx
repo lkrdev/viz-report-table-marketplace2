@@ -125,7 +125,7 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
       <ReportTable
         data={queryResponse.data || []}
         queryResponse={queryResponse}
-        config={effectiveVisConfig}
+        config={{ ...effectiveVisConfig, isExtension: true }}
         updateConfig={handleUpdateConfig}
         registerOptions={handleRegisterOptions}
         onDone={() => extensionSDK?.rendered?.()}

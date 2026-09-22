@@ -189,6 +189,12 @@ describe("TileExtension", () => {
       root.render(<TileExtension host={host} />);
     });
 
+    const registeredOpts = host.visualizationSDK.configureVisualization.mock.calls.at(-1)?.[0];
+    expect(registeredOpts.allowUserEdits.hidden).toBe(false);
+    expect(registeredOpts.allowUserFilters.hidden).toBe(false);
+    expect(registeredOpts.allowDimensionOrder.hidden).toBe(false);
+    expect(registeredOpts.allowMeasureOrder.hidden).toBe(false);
+
     // Loaded initial override hideSubtotals: true from artifact store -> button title is "Show Subtotals"
     const toggleBtn = container.querySelector(
       "#toggleSubtotalsBtn",
@@ -309,6 +315,7 @@ describe("TileExtension", () => {
           },
           queryResponse: {
             ...makeBaseQueryResponse(),
+            id: 'query-result-8:{"hidden_points_if_no":[],"hidden_fields":[]}',
             server_id: 777,
           },
         },

@@ -4,6 +4,7 @@
   --table-hover-bg: #ffffbb;
   --table-subtotal-bg: #D3D3D3;
   --table-zebra-bg: #f9f9f9;
+  --drag-indicator-color: #1a73e8;
 }
 
 #tooltip {

@@ -487,9 +487,13 @@ export function addColumnSubTotals () {
         if (matchPivotIndex !== -1) {
           subtotalColumn.pivot_index = matchPivotIndex
         }
+        var measurePos = (this.allowMeasureOrder && this.config.columnOrder && typeof this.config.columnOrder[measure.name] !== 'undefined')
+          ? this.config.columnOrder[measure.name]
+          : m * 10
+        subtotalColumn.pos = measurePos
         subtotalColumn.subtotal_data = {
           pivot: pivot,
-          measure_idx: m,
+          measure_idx: measurePos,
           columns: [],
         }
 
@@ -667,7 +671,7 @@ export function createVarianceColumn (colpair) {
     column.hide = !this.config['var_pct|' + baseline.modelField.name]
   }
 
-  if (typeof this.config.columnOrder[column.id] !== 'undefined') {
+  if (this.allowMeasureOrder && this.config.columnOrder && typeof this.config.columnOrder[column.id] !== 'undefined') {
     column.pos = this.config.columnOrder[column.id]
   } 
 

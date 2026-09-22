@@ -22,6 +22,10 @@ export interface VisConfig {
   arrow_style?: string;
   exposeDownloadLink?: boolean;
   transposeTable?: boolean;
+  allowUserEdits?: boolean;
+  allowUserFilters?: boolean;
+  allowDimensionOrder?: boolean;
+  allowMeasureOrder?: boolean;
   columnOrder?: Record<string, number>;
   clientSorts?: Array<{ name: string; desc: boolean }>;
   [key: string]: any;
