@@ -1,5 +1,4 @@
 const clone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x))
-const requireUserEdits = c => c?.allowUserEdits ? undefined : 'Requires "Allow User Edits" to be enabled.'
 
 export const tableModelCoreOptions = {
   theme: {
@@ -87,18 +86,18 @@ export const tableModelCoreOptions = {
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Dimensions",
+    hidden: true,
     default: false,
-    order: 8.4,
-    disabledReason: requireUserEdits
+    order: 8.4
   },
   allowMeasureOrder: {
     section: 'Theme',
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Measures",
+    hidden: true,
     default: false,
-    order: 8.5,
-    disabledReason: requireUserEdits
+    order: 8.5
   },
   allowUserFilters: {
     section: 'Theme',
@@ -339,10 +338,7 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
-  ;['allowDimensionOrder', 'allowMeasureOrder'].forEach(k => {
-    newOptions[k].disabledReason = requireUserEdits
-    newOptions[k].disabled = !this.config.allowUserEdits
-  })
+  ;['allowDimensionOrder', 'allowMeasureOrder'].forEach(k => { newOptions[k].hidden = !this.config.allowUserEdits })
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {

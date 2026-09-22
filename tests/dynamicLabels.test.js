@@ -98,19 +98,15 @@ describe('Dynamic label and config option handling', () => {
     expect(defaultOpts.allowUserEdits.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.display_size).toBe('half');
-    expect(defaultOpts.allowDimensionOrder.disabled).toBe(true);
-    expect(defaultOpts.allowDimensionOrder.disabledReason({})).toBe('Requires "Allow User Edits" to be enabled.');
+    expect(defaultOpts.allowDimensionOrder.hidden).toBe(true);
     expect(defaultOpts.allowMeasureOrder.section).toBe('Theme');
     expect(defaultOpts.allowMeasureOrder.display_size).toBe('half');
-    expect(defaultOpts.allowMeasureOrder.disabled).toBe(true);
-    expect(defaultOpts.allowMeasureOrder.disabledReason({})).toBe('Requires "Allow User Edits" to be enabled.');
+    expect(defaultOpts.allowMeasureOrder.hidden).toBe(true);
 
     const editsEnabledModel = new VisPluginTableModel(rows, metadata, { allowUserEdits: true });
     const enabledOpts = editsEnabledModel.getConfigOptions();
-    expect(enabledOpts.allowDimensionOrder.disabled).toBe(false);
-    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true, rowSubtotals: true, allowSubtotalToggle: true })).toBeUndefined();
-    expect(enabledOpts.allowMeasureOrder.disabled).toBe(false);
-    expect(enabledOpts.allowMeasureOrder.disabledReason({ allowUserEdits: true })).toBeUndefined();
+    expect(enabledOpts.allowDimensionOrder.hidden).toBe(false);
+    expect(enabledOpts.allowMeasureOrder.hidden).toBe(false);
   });
 
   it('reorders dimensions (when allowDimensionOrder is on and rowSubtotals is off) and measures (when allowMeasureOrder is on) independently', () => {

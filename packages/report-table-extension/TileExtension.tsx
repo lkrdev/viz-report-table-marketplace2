@@ -68,23 +68,10 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     if (!visualizationSDK) return;
     const withSavedDefaults: Record<string, any> = {};
     for (const [k, opt] of Object.entries(opts)) {
-      if (opt && typeof opt === "object") {
-        // Looker's vis_config_section_directive.js calls `optConf.disabledReason?.(...)` as a function,
-        // while `configureVisualization` uses window.postMessage which cannot clone functions.
-        // Strip `disabledReason` and fall back to `hidden: true` in the Extension host.
-        const { disabledReason, ...rest } = opt;
-        const reason =
-          typeof disabledReason === "function"
-            ? disabledReason(baseVisConfig, queryResponse)
-            : disabledReason;
-        withSavedDefaults[k] = {
-          ...rest,
-          ...(baseVisConfig[k] !== undefined ? { default: baseVisConfig[k] } : {}),
-          ...(reason ? { hidden: true } : {}),
-        };
-      } else {
-        withSavedDefaults[k] = opt;
-      }
+      withSavedDefaults[k] =
+        opt && typeof opt === "object" && baseVisConfig[k] !== undefined
+          ? { ...opt, default: baseVisConfig[k] }
+          : opt;
     }
     visualizationSDK.configureVisualization(withSavedDefaults);
   };
