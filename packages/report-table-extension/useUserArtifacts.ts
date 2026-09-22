@@ -12,6 +12,7 @@ import {
 } from "./artifactUtils";
 
 interface UseUserArtifactsParams {
+  extensionSDK?: ExtensionSDK;
   activeHost?: ExtensionSDK;
   tileSDK?: any;
   visualizationSDK?: any;
@@ -21,6 +22,7 @@ interface UseUserArtifactsParams {
 }
 
 export function useUserArtifacts({
+  extensionSDK,
   activeHost,
   tileSDK,
   visualizationSDK,
@@ -28,13 +30,12 @@ export function useUserArtifacts({
   baseVisConfig,
   queryResponse,
 }: UseUserArtifactsParams) {
-  const invokeCoreSdk = (activeHost as any)?.invokeCoreSdk;
   const core40SDK = useMemo(
     () =>
-      activeHost && typeof invokeCoreSdk === "function"
-        ? LookerExtensionSDK.createClient(activeHost as any)
+      extensionSDK && typeof (extensionSDK as any).invokeCoreSdk === "function"
+        ? LookerExtensionSDK.createClient(extensionSDK as any)
         : undefined,
-    [invokeCoreSdk],
+    [extensionSDK],
   );
 
   const [artifactKey, setArtifactKey] = useState<string | null>(null);

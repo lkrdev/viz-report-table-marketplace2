@@ -44,9 +44,15 @@ export function serializeFilters(filters: Record<string, any>): string {
 
 export function parseArtifactRecord(record: any): Record<string, any> {
   if (!record?.value) return {};
-  const parsed =
-    typeof record.value === "string" ? JSON.parse(record.value) : record.value;
-  return parsed && typeof parsed === "object" ? parsed : {};
+  try {
+    const parsed =
+      typeof record.value === "string"
+        ? JSON.parse(record.value)
+        : record.value;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 export function computeFilterDiff(

@@ -3,7 +3,7 @@ import {
   ExtensionSDK,
   RawVisualizationData,
 } from "@looker/extension-sdk";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { QueryResponse, ReportTable, VisConfig } from "report-table-react";
 import { useUserArtifacts } from "./useUserArtifacts";
 
@@ -45,13 +45,17 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
   const tileSDK = activeHost?.tileSDK;
   const visualizationSDK = activeHost?.visualizationSDK;
   const activeVisData = visData ?? visualizationSDK?.visualizationData;
-  const baseVisConfig = (activeVisData?.visConfig as VisConfig) || {};
+  const baseVisConfig = useMemo(
+    () => (activeVisData?.visConfig as VisConfig) || {},
+    [activeVisData?.visConfig],
+  );
   const queryResponse = activeVisData?.queryResponse as unknown as
     | QueryResponse
     | undefined;
 
   const { artifactLoaded, effectiveVisConfig, handleUpdateConfig } =
     useUserArtifacts({
+      extensionSDK,
       activeHost,
       tileSDK,
       visualizationSDK,
