@@ -11,7 +11,7 @@ A table visualization for single-page summary reports in Looker. Built for PDF e
   - Uses Looker query subtotals when available, or calculates them on the client
 - Header row for non-pivoted tables
 - Column reordering by pivot value or measure
-  - Drag and drop column reordering on flat tables
+  - Drag and drop column reordering for dimensions and measures (flat and pivoted tables)
 - Dimension transposition
 - Red and black conditional formatting
 - Subtotal formatting for highlighting transposed measure rows
@@ -107,29 +107,15 @@ When working with multi-level hierarchies (such as Country > State > Category), 
 
 ### Configuration options
 
-- Subtotal Style:
-  - `Simple`: Standard multi-column layout with subtotal rows.
-  - `Collapsed`: Collapses dimension columns into a single column with indentation levels (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and combines column headers (such as `Country / State / Category`).
-- Allow Subtotal Toggle (`allowSubtotalToggle`):
-  - When **Row Subtotals** (`rowSubtotals`) is enabled, turning on **Allow Subtotal Toggle** adds a floating Sigma (`Σ`) button (`#toggleSubtotalsBtn`) to the top-right action bar when hovering over the table.
-  - Clicking the button toggles `hideSubtotals` between showing and hiding subtotal rows on the fly without modifying the underlying query.
-  - If **Allow Subtotal Toggle** is turned off, any hidden toggle state (`hideSubtotals`) is ignored so row subtotals always display when `rowSubtotals` is active.
-- Allow User Edits (`allowUserEdits`, **Extension only**):
-  - Located at the end of the **Theme** tab. This feature **only works when using the Looker Extension visualization (`report_table_extension.js`)**.
-  - When enabled, viewer interactions on a saved Look or Dashboard tile (such as expanding/collapsing rows, toggling subtotals, or reordering columns) are saved per user and per Look/Dashboard tile via Looker's Artifacts API and automatically restored on reload.
-  - When **Allow User Edits** is enabled and a viewer has active overrides, a **Reset Edits** button (`#resetEditsBtn`) appears in the top-right floating action bar to clear saved user edits and restore the base Look/Dashboard configuration.
-- Save and Apply User Filter State (`allowUserFilters`, **Extension only**):
-  - Located in the **Theme** tab below **Allow User Edits**. This feature **only works on Dashboards when using the Looker Extension visualization (`report_table_extension.js`)** and requires `"dashboard_dashboard_filters"` in `manifest.lkml` `entitlements.core_api_methods`.
-  - When enabled, filter changes on a Dashboard (`tileHostData.dashboardFilters`) are persisted per user and per Dashboard (`user_${userId}_dashboard_${dashboardId}_filters`) via Looker's Artifacts API.
-  - When loading a Dashboard, the extension fetches the dashboard's configured `default_value` for each filter (`dashboard_dashboard_filters`) and applies saved filter values only when the active filter is empty (`""`) or matches the dashboard default—preserving any explicit non-default filter values passed in the URL.
-  - If all saved filters already match the active filters (or during headless PDF/PNG renders where `lookerHostData.isRendering` is true), no filter update or query re-run is triggered.
-  - Clicking the floating **Reset Edits** button (`#resetEditsBtn`) clears saved filter overrides and restores the Dashboard's initial/default filters.
-  - When turned off, per-user overrides are ignored and viewer changes are not persisted.
-- Arrow Style:
-  - `Arrows`: Displays `▲` / `▼` toggle icons.
-  - `+/-`: Displays `[-]` / `[+]` toggle buttons.
-- Start Collapsed:
-  - When enabled, collapses subtotal groups on initial render. Users can click any row toggle to expand or collapse child groups.
+Set **Subtotal Style** to `Simple` for a standard multi-column layout with subtotal rows, or `Collapsed` to fold dimension columns into a single hierarchical column with indentation classes (`subtotal-collapsed-0`, `subtotal-collapsed-1`, etc.) and combined headers such as `Country / State / Category`. When **Start Collapsed** is enabled, subtotal groups start folded on initial render, and **Arrow Style** switches the row expand/collapse indicator between `▲` / `▼` arrows (`Arrows`) and `[-]` / `[+]` text toggles (`+/-`).
+
+When **Row Subtotals** (`rowSubtotals`) is enabled, turning on **Allow Subtotal Toggle** (`allowSubtotalToggle`) adds a floating Sigma (`Σ`) button (`#toggleSubtotalsBtn`) to the top-right action bar on hover. Clicking this button toggles `hideSubtotals` to show or hide subtotal rows on the fly without re-running the query. Turning **Allow Subtotal Toggle** off ignores any saved `hideSubtotals` state so row subtotals always display.
+
+When using the Looker Extension visualization (`report_table_extension.js`), enabling **Allow User Edits** (`allowUserEdits`) in the **Theme** tab persists viewer changes on a saved Look or Dashboard tile (such as expanded or collapsed rows, subtotal toggles, and column order) per user and per tile through Looker's Artifacts API. Whenever a viewer has active overrides, a **Reset Edits** button (`#resetEditsBtn`) appears in the top-right floating action bar to clear those overrides and restore the base tile configuration.
+
+Turning on **Reorder Dimensions** (`allowDimensionOrder`) and/or **Reorder Measures** (`allowMeasureOrder`)—shown side-by-side in the **Theme** tab when **Allow User Edits** is enabled—lets users drag and drop column headers to reorder columns within their group. Dimension columns can be reordered among dimensions when **Row Subtotals** is off, and measure columns can be reordered among measures in both flat and pivoted tables (updating the measure order across all pivot groups). Clicking **Reset Edits** (`#resetEditsBtn`) restores the default column order.
+
+Enabling **Save and Apply User Filter State** (`allowUserFilters`) in the **Theme** tab persists dashboard filter selections (`tileHostData.dashboardFilters`) per user and per dashboard (`user_${userId}_dashboard_${dashboardId}_filters`) via Looker's Artifacts API. This option works on Dashboards with the Looker Extension visualization (`report_table_extension.js`) and requires `"dashboard_dashboard_filters"` in `manifest.lkml` under `entitlements.core_api_methods`. On load, the extension checks the dashboard's configured `default_value` for each filter and applies saved values only when the active filter is empty (`""`) or matches the default, which preserves explicit filter values passed in the URL. If all saved filters already match the active filters, or during headless PDF/PNG renders (`lookerHostData.isRendering`), no filter update or query re-run occurs. Clicking **Reset Edits** (`#resetEditsBtn`) clears saved filter overrides and restores the dashboard defaults.
 
 ## Dynamic hierarchies and null dimension suppression
 
@@ -328,6 +314,54 @@ When the **Subtotals on Top** option is enabled, `.subtotal-top` and `.subtotals
 }
 ```
 
+#### Customizing column drag-and-drop
+
+When **Allow User Edits** and either **Reorder Dimensions** or **Reorder Measures** are enabled, reorderable header cells receive `.draggable-header`, the active dragged cell receives `.dragging`, and the drop target column receives `.drag-over-left` or `.drag-over-right`:
+
+```css
+/* Custom drop-line indicator color via CSS variable */
+:root {
+  --drag-indicator-color: #0d9488;
+}
+
+/* Reorderable column header hover hint */
+#reportTable thead th.draggable-header:hover {
+  background-color: #f0fdfa;
+}
+
+/* Header cell currently being dragged */
+#reportTable thead th.draggable-header.dragging {
+  opacity: 0.4;
+  background-color: #ccfbf1 !important;
+}
+
+/* Left / right drop target insertion borders and highlight */
+#reportTable thead th.drag-over-left {
+  border-left: 3px solid #0d9488 !important;
+  background-color: #f0fdfa !important;
+}
+
+#reportTable thead th.drag-over-right {
+  border-right: 3px solid #0d9488 !important;
+  background-color: #f0fdfa !important;
+}
+```
+
+#### Styling drillable cells
+
+Cells with Looker drill links (`d.links`) receive the `.links` (and `.has-links`) class on their `<td>` element:
+
+```css
+#reportTable td.links {
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+#reportTable td.links:hover {
+  color: #1557b0;
+}
+```
+
 ### Hosting custom CSS
 
 To load external CSS into Looker, the stylesheet must be served over HTTPS with CORS headers (`Access-Control-Allow-Origin: *`) and a `Content-Type: text/css` header.
@@ -362,10 +396,9 @@ To report an issue or suggest an improvement, please submit a request at help.lo
 
 ### Project structure
 
-- `./report_table.js`: Minified distribution file.
-- `manifest.lkml`: Looker external dependencies configuration file defining the visualization object.
-- `marketplace.json`: Looker Marketplace package configuration.
-- `src/`: Visualization source files.
-- `src/report_table.js`: Main entry point for the visualization.
-- `tests/`: Jest test suites.
+- `./dist/report_table.js`, `./dist/report_table_react.js`, and `./dist/report_table_extension.js` contain the compiled visualization and extension bundles.
+- `manifest.lkml` and `marketplace.json` configure the Looker project dependencies and Marketplace package metadata.
+- `src/` holds the core table model (`src/model/`), D3 renderer (`src/view/`), and theme CSS files (`src/report_table.js` is the entry point).
+- `packages/` contains the React wrapper (`report-table-react`) and Looker Extension tile component (`report-table-extension`).
+- `tests/` contains the Jest test suites and fixtures.
 

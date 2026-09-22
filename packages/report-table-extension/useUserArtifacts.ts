@@ -63,7 +63,7 @@ export function useUserArtifacts({
     activeHost?.lookerHostData ?? (tileSDK as any)?.hostApi?._lookerHostData;
   const namespace = lookerHostData?.extensionId || "report-table-extension";
   const queryId =
-    (queryResponse as any)?.id ?? (queryResponse as any)?.server_id;
+    (queryResponse as any)?.server_id ?? (queryResponse as any)?.id;
 
   const isDashboardView = Boolean(
     thd?.elementId != null && !thd?.isDashboardEditing,
@@ -437,7 +437,8 @@ export function useUserArtifacts({
         return;
       }
     } else {
-      visualizationSDK?.setVisConfig({ ...baseVisConfig, ...partial });
+      const { resetUserEdits, ...rest } = partial as any;
+      visualizationSDK?.setVisConfig({ ...baseVisConfig, ...rest });
       return;
     }
 

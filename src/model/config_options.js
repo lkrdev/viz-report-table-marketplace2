@@ -81,6 +81,24 @@ export const tableModelCoreOptions = {
     default: false,
     order: 8
   },
+  allowDimensionOrder: {
+    section: 'Theme',
+    type: 'boolean',
+    display_size: 'half',
+    label: "Reorder Dimensions",
+    hidden: true,
+    default: false,
+    order: 8.4
+  },
+  allowMeasureOrder: {
+    section: 'Theme',
+    type: 'boolean',
+    display_size: 'half',
+    label: "Reorder Measures",
+    hidden: true,
+    default: false,
+    order: 8.5
+  },
   allowUserFilters: {
     section: 'Theme',
     type: 'boolean',
@@ -320,6 +338,8 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
+  newOptions.allowDimensionOrder.hidden = !this.config.allowUserEdits
+  newOptions.allowMeasureOrder.hidden = !this.config.allowUserEdits
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {

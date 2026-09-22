@@ -125,9 +125,53 @@ export const computeColumnTextWidths = function(dataTable, config) {
 export const renderTable = async function(element, config, dataTable, callbacks = {}) {
   const { updateColumnOrder, updateConfig, redraw } = callbacks;
   var dropTarget = null;
-  const bounds = element.getBoundingClientRect()
-  const chartCentreX = bounds.x + (bounds.width / 2);
-  const chartCentreY = bounds.y + (bounds.height / 2);
+  var activeDragSource = null;
+  var dragMoved = false;
+
+  if (typeof document !== 'undefined' && !document.getElementById('reportTableDragStyle')) {
+    const dragStyle = document.createElement('style');
+    dragStyle.id = 'reportTableDragStyle';
+    dragStyle.textContent = `
+      #reportTable thead th.draggable-header {
+        cursor: grab;
+      }
+      #reportTable thead th.draggable-header.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+      }
+      #reportTable thead th.drag-over-left {
+        border-left: 2px solid var(--drag-indicator-color, #1a73e8) !important;
+      }
+      #reportTable thead th.drag-over-right {
+        border-right: 2px solid var(--drag-indicator-color, #1a73e8) !important;
+      }
+    `;
+    document.head.prepend(dragStyle);
+  }
+
+  const canDragCell = (d) => {
+    if (dataTable.transposeTable || !d || !d.column || d.type !== 'field') return false;
+    if (d.column.isDimension) {
+      return Boolean(dataTable.allowDimensionOrder && d.colspan === 1 && !dataTable.addRowSubtotals && !dataTable.useIndexColumn && d.column.id !== INDEX_COLUMN);
+    }
+    if (d.column.modelField && d.column.modelField.type === 'measure') {
+      return Boolean(dataTable.allowMeasureOrder && !d.column.super);
+    }
+    return false;
+  };
+
+  const canDropOnCell = (source, target) => {
+    if (!canDragCell(source) || !canDragCell(target)) return false;
+    if (Boolean(source.column.isDimension) !== Boolean(target.column.isDimension)) return false;
+    return Math.floor(source.column.pos / 10) !== Math.floor(target.column.pos / 10);
+  };
+
+  const getTooltip = () => d3.select(element.querySelector('#tooltip') || document.getElementById('tooltip'));
+  const clearDropIndicators = () => {
+    element.querySelectorAll('#reportTable thead th').forEach(th => {
+      th.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+    });
+  };
 
   var table = d3.select(element).select('#visContainer')
     .append('table')
@@ -136,35 +180,66 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       .style('opacity', 0)
 
   var drag = d3.drag()
-    .on('start', (source, idx) => {
-      if (!dataTable.has_pivots && source.colspan === 1) {
-        var xPosition = parseFloat(d3.event.x);
-        var yPosition = parseFloat(d3.event.y);
-        var html = source.column.getHeaderCellLabelByType('field')
+    .on('start', function(source) {
+      if (!canDragCell(source)) return;
+      activeDragSource = source;
+      dropTarget = null;
+      dragMoved = false;
+      this.classList.add('dragging');
+    })
+    .on('drag', function(source) {
+      if (!activeDragSource) return;
+      const evt = d3.event || {};
+      const srcEvt = evt.sourceEvent || evt;
+      dragMoved = true;
+      const rect = element.getBoundingClientRect();
+      const xPosition = (srcEvt.clientX !== undefined ? srcEvt.clientX - rect.left : parseFloat(evt.x) || 0) + 10;
+      const yPosition = (srcEvt.clientY !== undefined ? srcEvt.clientY - rect.top : parseFloat(evt.y) || 0) + 10;
+      const html = source.column.getHeaderCellLabelByType('field') || source.label || '';
 
-        d3.select("#tooltip")
-            .style("left", xPosition + "px")
-            .style("top", yPosition + "px")                     
-            .html(html);
-  
-        d3.select("#tooltip").classed("hidden", false);     
+      getTooltip()
+        .style("left", xPosition + "px")
+        .style("top", yPosition + "px")
+        .style("z-index", "1000")
+        .html(html)
+        .classed("hidden", false);
+
+      if (typeof document !== 'undefined' && typeof document.elementFromPoint === 'function' && srcEvt.clientX !== undefined && srcEvt.clientY !== undefined) {
+        const hitEl = document.elementFromPoint(srcEvt.clientX, srcEvt.clientY);
+        const targetTh = hitEl && hitEl.closest ? hitEl.closest('#reportTable thead th') : null;
+        if (targetTh) {
+          const targetData = d3.select(targetTh).datum();
+          if (canDropOnCell(activeDragSource, targetData)) {
+            dropTarget = targetData;
+            element.querySelectorAll('#reportTable thead th').forEach(th => th.classList.remove('drag-over-left', 'drag-over-right'));
+            targetTh.classList.add(targetData.column.pos < activeDragSource.column.pos ? 'drag-over-left' : 'drag-over-right');
+          }
+        }
       }
     })
-    .on('drag', (source, idx) => {
-      if (!dataTable.has_pivots) {
-        d3.select("#tooltip") 
-          .style("left", d3.event.x + "px")
-          .style("top", d3.event.y + "px")  
+    .on('end', function(source) {
+      if (!activeDragSource) return;
+      getTooltip().classed("hidden", true);
+      clearDropIndicators();
+      const target = dropTarget;
+      const didMove = dragMoved;
+      activeDragSource = null;
+      dropTarget = null;
+      dragMoved = false;
+
+      if (didMove) {
+        element._justDragged = true;
+        setTimeout(() => { element._justDragged = false; }, 50);
       }
-    })
-    .on('end', (source, idx) => {
-      if (!dataTable.has_pivots) {
-        d3.select("#tooltip").classed("hidden", true);
-        var movingColumn = source.column
-        var targetColumn = dropTarget.column
-        var movingIdx = Math.floor(movingColumn.pos/10) * 10
-        var targetIdx = Math.floor(targetColumn.pos/10) * 10
-        dataTable.moveColumns(movingIdx, targetIdx, updateColumnOrder)
+
+      if (target && canDropOnCell(source, target)) {
+        var movingColumn = source.column;
+        var targetColumn = target.column;
+        var movingIdx = Math.floor(movingColumn.pos / 10) * 10;
+        var targetIdx = Math.floor(targetColumn.pos / 10) * 10;
+        var groupType = movingColumn.isDimension ? 'dimension' : 'measure';
+        dataTable.moveColumns(movingIdx, targetIdx, updateColumnOrder, groupType);
+        if (redraw && !element._isReactManaged) redraw();
       }
     })
   
@@ -257,18 +332,18 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         classes.push(`pivot-group-${d.column.pivot_index}`)
         classes.push(`pivot-group-${d.column.pivot_index % 2 === 0 ? 'even' : 'odd'}`)
       }
+      if (canDragCell(d)) {
+        classes.push('draggable-header')
+      }
       return classes.join(' ')
     })
     .style('text-align', d => d.align)
     .style('font-size', config.headerFontSize + 'px')
-    .style('cursor', d => getHeaderCellSortInfo(d, dataTable).sortId ? 'pointer' : 'default')
+    .style('cursor', d => canDragCell(d) ? 'grab' : (getHeaderCellSortInfo(d, dataTable).sortId ? 'pointer' : 'default'))
     .style('user-select', 'none')
-    .attr('draggable', true)
     .call(drag)
-    .on('mouseover', cell => dropTarget = cell)
-    .on('mouseout', () => dropTarget = null)
     .on('click', function(d) {
-      if (d3.event && d3.event.defaultPrevented) return
+      if (element._justDragged || (d3.event && d3.event.defaultPrevented)) return
       const { sortId } = getHeaderCellSortInfo(d, dataTable);
       if (sortId) {
         if (d3.event) {
@@ -435,6 +510,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       if (typeof d.value === 'object') { classes.push('cellSeries') }
       if (typeof d.align !== 'undefined') { classes.push(d.align) }
       if (typeof d.cell_style !== 'undefined') { classes = classes.concat(d.cell_style) }
+      if (d.links && d.links.length > 0) { classes.push('links') }
       if (d.cell_style && d.cell_style.includes('subtotal') && dataTable.subtotalsOnTop) {
         if (!classes.includes('subtotal-top')) classes.push('subtotal-top')
         if (!classes.includes('subtotals-on-top')) classes.push('subtotals-on-top')

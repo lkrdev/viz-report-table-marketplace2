@@ -309,6 +309,7 @@ describe("TileExtension", () => {
           },
           queryResponse: {
             ...makeBaseQueryResponse(),
+            id: 'query-result-8:{"hidden_points_if_no":[],"hidden_fields":[]}',
             server_id: 777,
           },
         },

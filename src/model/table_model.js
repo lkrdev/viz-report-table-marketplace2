@@ -103,13 +103,15 @@ class VisPluginTableModel {
     this.hideZeroCols = config.hideZeroCols || false
     this.hideNullDimensionCols = config.hideNullDimensionCols || config.hideNullDimensions || config.hideNullDimensionColumns || config.hideNullDims || false
 
+    this.allowDimensionOrder = Boolean(config.allowUserEdits && config.allowDimensionOrder)
+    this.allowMeasureOrder = Boolean(config.allowUserEdits && config.allowMeasureOrder)
     this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
     this.hasTotals = typeof queryResponse.totals_data !== 'undefined' ? true : false
     this.calculateOthers = typeof queryResponse.truncated !== 'undefined' ? queryResponse.truncated && config.calculateOthers : false 
     this.hasSubtotals = false
     this.hasRowTotals = queryResponse.has_row_totals || false
-    this.hasPivots = typeof queryResponse.pivots !== 'undefined' ? true : false
+    this.hasPivots = Array.isArray(queryResponse.pivots) ? queryResponse.pivots.length > 0 : Boolean(queryResponse.pivots)
     this.hasSupers = typeof queryResponse.fields.supermeasure_like !== 'undefined' ? Boolean(queryResponse.fields.supermeasure_like.length) : false
 
     this.transposeTable = config.transposeTable || false
@@ -200,6 +202,7 @@ class VisPluginTableModel {
    * @param {*} col_idx 
    */
   addDimensions(queryResponse, col_idx) {
+    const canReorderDims = Boolean(this.allowDimensionOrder && !this.addRowSubtotals && !this.useIndexColumn)
     queryResponse.fields.dimension_like.forEach(dimension => {
       var newDimension = new ModelDimension({
         vis: this,
@@ -211,6 +214,9 @@ class VisPluginTableModel {
       var column = new Column(newDimension.name, this, newDimension) 
       column.isDimension = true
       column.idx = col_idx
+      column.pos = (canReorderDims && this.config.columnOrder && typeof this.config.columnOrder[column.id] !== 'undefined')
+        ? this.config.columnOrder[column.id]
+        : col_idx
       column.sort.push({name: 'section', value: 0})
       this.headers.forEach(header => {
         switch (header.type) {
@@ -227,7 +233,7 @@ class VisPluginTableModel {
             break
           case 'field':
             column.levels.push(new HeaderCell({ column: column, type: 'field', modelField: newDimension }))
-            column.sort.push({name: 'col_idx', value: col_idx})
+            column.sort.push({name: 'column.pos', value: column.pos})
             break
         }
       })
@@ -235,6 +241,10 @@ class VisPluginTableModel {
       this.columns.push(column)
       col_idx += 10
     })
+
+    if (canReorderDims) {
+      this.dimensions.sort((a, b) => (this.getColumnById(a.name).pos ?? 0) - (this.getColumnById(b.name).pos ?? 0))
+    }
 
     for (var i = 0; i < this.dimensions.length; i++) {
       var dimension = this.dimensions[i]
@@ -291,6 +301,13 @@ class VisPluginTableModel {
       this.measures.push(newMeasure) 
     })
     
+    const getMeasurePos = (measureName, mIdx) => {
+      if (this.allowMeasureOrder && this.config.columnOrder && typeof this.config.columnOrder[measureName] !== 'undefined') {
+        return this.config.columnOrder[measureName]
+      }
+      return mIdx * 10
+    }
+
     if (this.hasPivots) {
       this.pivot_values.forEach((pivot_value, p_idx) => {
         var isRowTotal = pivot_value.key === '$$$_row_total_$$$'
@@ -298,12 +315,14 @@ class VisPluginTableModel {
           var include_measure = !isRowTotal || ( isRowTotal && !measure.is_table_calculation )
           
           if (include_measure) {
+            var measurePos = getMeasurePos(measure.name, m)
             var column = new Column([pivot_value.key, measure.name].join('.'), this, measure)
             column.pivoted = isRowTotal ? false : true
             column.isRowTotal = isRowTotal
             column.pivot_key = pivot_value.key
             column.pivot_index = isRowTotal ? undefined : p_idx
-            column.idx = col_idx
+            column.idx = m * 10
+            column.pos = measurePos
 
             var tempSort = []
             var level_sort_values = []
@@ -342,7 +361,7 @@ class VisPluginTableModel {
             var sort = []
             sort.push({ name: 'section', value: isRowTotal ? 2 : 1 })
             if (this.sortColsBy === 'measures') {
-              sort.push({ name: 'measure_idx', value: m })
+              sort.push({ name: 'measure_idx', value: measurePos })
             }
             if (this.pivot_fields.length === 2) {
               if (this.addColSubtotals) {
@@ -371,7 +390,7 @@ class VisPluginTableModel {
             }
             
             if (this.sortColsBy === 'pivots') {
-              sort.push({ name: 'measure_idx', value: m })
+              sort.push({ name: 'measure_idx', value: measurePos })
             }
             column.sort = sort
 
@@ -381,21 +400,11 @@ class VisPluginTableModel {
         })
       })
     } else {
-      this.measures.forEach(measure => {
+      this.measures.forEach((measure, m) => {
         var column = new Column(measure.name, this, measure)
         column.sort.push({name: 'section', value: 1})
         column.idx = col_idx
-
-        try {
-          if (typeof this.config.columnOrder[column.id] !== 'undefined') {
-            column.pos = this.config.columnOrder[column.id]
-          } else {
-            column.pos = col_idx
-          }
-        }
-        catch {
-          column.pos = col_idx
-        }
+        column.pos = getMeasurePos(measure.name, m)
 
         this.headers.forEach(header => {
           switch (header.type) {
@@ -840,6 +849,11 @@ class VisPluginTableModel {
     var columns = this.columns.filter(c => !c.hide)
 
     columns.forEach(column => {
+      column.levels.forEach(level => {
+        level.colspan = 1
+        level.rowspan = 1
+        level.cell_style = level.cell_style.filter(s => s !== 'merged')
+      })
       var leaf = {
         id: column.id,
         data: column.getHeaderData()
@@ -1000,13 +1014,15 @@ class VisPluginTableModel {
    * @param {*} to 
    * @param {*} updateColumnOrder 
    */
-  moveColumns(from, to, updateColumnOrder) {
-    var config = this.config
-    if (from != to) {
+  moveColumns(from, to, updateColumnOrder, groupType = 'measure') {
+    if (from !== to) {
       var shift = to - from
-      var col_order = config.columnOrder
+      var col_order = { ...(this.config.columnOrder || {}) }
       this.columns.forEach(col => {
-        if (col.modelField.type === 'measure' && !col.super) {
+        var isTargetGroup = groupType === 'dimension'
+          ? (col.isDimension && col.id !== INDEX_COLUMN)
+          : (col.modelField.type === 'measure' && !col.super)
+        if (isTargetGroup && typeof col.pos === 'number') {
           if (col.pos >= from && col.pos < from + 10) {
             col.pos += shift
           } else if (col.pos >= to && col.pos < from) {
@@ -1014,10 +1030,24 @@ class VisPluginTableModel {
           } else if (col.pos >= from + 10 && col.pos < to + 10) {
             col.pos -= 10
           }
+          var posSort = col.sort && col.sort.find(s => s.name === 'column.pos' || s.name === 'measure_idx')
+          if (posSort) posSort.value = col.pos
+          if (groupType === 'measure' && !col.isVariance && col.modelField && col.modelField.name) {
+            col_order[col.modelField.name] = Math.floor(col.pos / 10) * 10
+          }
           col_order[col.id] = col.pos
         } 
       })
-      updateColumnOrder(col_order)
+      this.config.columnOrder = col_order
+      if (groupType === 'dimension') {
+        this.dimensions.sort((a, b) => (this.getColumnById(a.name).pos ?? 0) - (this.getColumnById(b.name).pos ?? 0))
+        var firstVis = this.dimensions.find(d => !d.hide)
+        this.firstVisibleDimension = firstVis ? firstVis.name : ''
+      }
+      this.sortColumns()
+      if (this.spanCols) { this.setColSpans() }
+      if (this.spanRows) { this.setRowSpans() }
+      if (updateColumnOrder) updateColumnOrder(col_order)
     }
   }
 

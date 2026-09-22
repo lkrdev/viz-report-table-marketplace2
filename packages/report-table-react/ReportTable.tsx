@@ -91,7 +91,11 @@ export const ReportTable: React.FC<ReportTableProps> = ({
   onDoneRef.current = onDone;
 
   const applyConfigUpdate = useCallback((newConfig: Partial<VisConfig>) => {
-    setLocalConfigOverrides((prev) => ({ ...prev, ...newConfig }));
+    if ((newConfig as any).resetUserEdits) {
+      setLocalConfigOverrides({ columnOrder: {} });
+    } else {
+      setLocalConfigOverrides((prev) => ({ ...prev, ...newConfig }));
+    }
     updateConfigRef.current(newConfig);
   }, []);
 
