@@ -1,5 +1,5 @@
 const clone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x))
-const requireUserEdits = c => c && c.allowUserEdits ? undefined : 'Requires "Allow User Edits" to be enabled.'
+const requireUserEdits = c => c?.allowUserEdits ? undefined : 'Requires "Allow User Edits" to be enabled.'
 
 export const tableModelCoreOptions = {
   theme: {
