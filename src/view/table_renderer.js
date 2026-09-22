@@ -167,9 +167,9 @@ export const renderTable = async function(element, config, dataTable, callbacks 
   };
 
   const getTooltip = () => d3.select(element.querySelector('#tooltip') || document.getElementById('tooltip'));
-  const clearDropIndicators = () => {
+  const clearDropIndicators = (includeDragging = true) => {
     element.querySelectorAll('#reportTable thead th').forEach(th => {
-      th.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+      th.classList.remove(...(includeDragging ? ['dragging', 'drag-over-left', 'drag-over-right'] : ['drag-over-left', 'drag-over-right']));
     });
   };
 
@@ -212,7 +212,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
           const targetData = d3.select(targetTh).datum();
           if (canDropOnCell(activeDragSource, targetData)) {
             dropTarget = targetData;
-            element.querySelectorAll('#reportTable thead th').forEach(th => th.classList.remove('drag-over-left', 'drag-over-right'));
+            clearDropIndicators(false);
             targetTh.classList.add(targetData.column.pos < activeDragSource.column.pos ? 'drag-over-left' : 'drag-over-right');
           }
         }

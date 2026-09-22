@@ -1,4 +1,5 @@
 const clone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x))
+const requireUserEdits = c => c && c.allowUserEdits ? undefined : 'Requires "Allow User Edits" to be enabled.'
 
 export const tableModelCoreOptions = {
   theme: {
@@ -88,10 +89,7 @@ export const tableModelCoreOptions = {
     label: "Reorder Dimensions",
     default: false,
     order: 8.4,
-    disabledReason: function(config) {
-      if (!config.allowUserEdits) return 'Requires "Allow User Edits" to be enabled.'
-      return undefined
-    }
+    disabledReason: requireUserEdits
   },
   allowMeasureOrder: {
     section: 'Theme',
@@ -100,10 +98,7 @@ export const tableModelCoreOptions = {
     label: "Reorder Measures",
     default: false,
     order: 8.5,
-    disabledReason: function(config) {
-      if (!config.allowUserEdits) return 'Requires "Allow User Edits" to be enabled.'
-      return undefined
-    }
+    disabledReason: requireUserEdits
   },
   allowUserFilters: {
     section: 'Theme',
@@ -344,10 +339,10 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
-  newOptions.allowDimensionOrder.disabledReason = tableModelCoreOptions.allowDimensionOrder.disabledReason
-  newOptions.allowMeasureOrder.disabledReason = tableModelCoreOptions.allowMeasureOrder.disabledReason
-  newOptions.allowDimensionOrder.disabled = Boolean(newOptions.allowDimensionOrder.disabledReason(this.config))
-  newOptions.allowMeasureOrder.disabled = Boolean(newOptions.allowMeasureOrder.disabledReason(this.config))
+  ;['allowDimensionOrder', 'allowMeasureOrder'].forEach(k => {
+    newOptions[k].disabledReason = requireUserEdits
+    newOptions[k].disabled = !this.config.allowUserEdits
+  })
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {

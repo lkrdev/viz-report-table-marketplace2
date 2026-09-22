@@ -68,24 +68,20 @@ export const TileExtension: React.FC<{ host?: ExtensionSDK }> = ({ host }) => {
     if (!visualizationSDK) return;
     const withSavedDefaults: Record<string, any> = {};
     for (const [k, opt] of Object.entries(opts)) {
-      if (opt && typeof opt === "object") {
-        const nextOpt: Record<string, any> = {
-          ...opt,
-          ...(baseVisConfig[k] !== undefined ? { default: baseVisConfig[k] } : {}),
-        };
-        if (typeof nextOpt.disabledReason === "function") {
-          const reason = nextOpt.disabledReason(baseVisConfig, queryResponse);
-          nextOpt.disabled = Boolean(reason);
-          if (reason) {
-            nextOpt.disabledReason = reason;
-          } else {
-            delete nextOpt.disabledReason;
-          }
-        }
-        withSavedDefaults[k] = nextOpt;
-      } else {
-        withSavedDefaults[k] = opt;
-      }
+      const reason =
+        typeof opt?.disabledReason === "function"
+          ? opt.disabledReason(baseVisConfig, queryResponse)
+          : opt?.disabledReason;
+      withSavedDefaults[k] =
+        opt && typeof opt === "object"
+          ? {
+              ...opt,
+              ...(baseVisConfig[k] !== undefined ? { default: baseVisConfig[k] } : {}),
+              ...(reason !== undefined || opt.disabled !== undefined
+                ? { disabled: Boolean(reason ?? opt.disabled), disabledReason: reason }
+                : {}),
+            }
+          : opt;
     }
     visualizationSDK.configureVisualization(withSavedDefaults);
   };
