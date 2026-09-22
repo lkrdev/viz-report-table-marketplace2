@@ -108,8 +108,7 @@ describe('Dynamic label and config option handling', () => {
     const editsEnabledModel = new VisPluginTableModel(rows, metadata, { allowUserEdits: true });
     const enabledOpts = editsEnabledModel.getConfigOptions();
     expect(enabledOpts.allowDimensionOrder.disabled).toBe(false);
-    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true })).toBeUndefined();
-    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true, rowSubtotals: true })).toBe('Requires "Row Subtotals" to be disabled.');
+    expect(enabledOpts.allowDimensionOrder.disabledReason({ allowUserEdits: true, rowSubtotals: true, allowSubtotalToggle: true })).toBeUndefined();
     expect(enabledOpts.allowMeasureOrder.disabled).toBe(false);
     expect(enabledOpts.allowMeasureOrder.disabledReason({ allowUserEdits: true })).toBeUndefined();
   });

@@ -90,8 +90,6 @@ export const tableModelCoreOptions = {
     order: 8.4,
     disabledReason: function(config) {
       if (!config.allowUserEdits) return 'Requires "Allow User Edits" to be enabled.'
-      if (config.rowSubtotals) return 'Requires "Row Subtotals" to be disabled.'
-      if (config.indexColumn) return 'Requires "Use Last Field Only" to be disabled.'
       return undefined
     }
   },
