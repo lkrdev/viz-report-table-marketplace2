@@ -78,6 +78,7 @@ export const tableModelCoreOptions = {
     section: 'Theme',
     type: 'boolean',
     label: "Allow User Edits",
+    hidden: true,
     default: false,
     order: 8
   },
@@ -103,6 +104,7 @@ export const tableModelCoreOptions = {
     section: 'Theme',
     type: 'boolean',
     label: "Save and Apply User Filter State",
+    hidden: true,
     default: false,
     order: 9
   },
@@ -338,7 +340,6 @@ export const tableModelCoreOptions = {
 export function getConfigOptions() {
   var newOptions = clone(tableModelCoreOptions)
   newOptions.customTheme.hidden = this.config.theme !== 'custom'
-  ;['allowDimensionOrder', 'allowMeasureOrder'].forEach(k => { newOptions[k].hidden = !this.config.allowUserEdits })
 
   var subtotal_options = []
   this.dimensions.forEach((dimension, i) => {

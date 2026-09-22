@@ -96,17 +96,14 @@ describe('Dynamic label and config option handling', () => {
     const defaultOpts = defaultModel.getConfigOptions();
     expect(defaultOpts.theme.section).toBe('Theme');
     expect(defaultOpts.allowUserEdits.section).toBe('Theme');
+    expect(defaultOpts.allowUserEdits.hidden).toBe(true);
+    expect(defaultOpts.allowUserFilters.hidden).toBe(true);
     expect(defaultOpts.allowDimensionOrder.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.display_size).toBe('half');
     expect(defaultOpts.allowDimensionOrder.hidden).toBe(true);
     expect(defaultOpts.allowMeasureOrder.section).toBe('Theme');
     expect(defaultOpts.allowMeasureOrder.display_size).toBe('half');
     expect(defaultOpts.allowMeasureOrder.hidden).toBe(true);
-
-    const editsEnabledModel = new VisPluginTableModel(rows, metadata, { allowUserEdits: true });
-    const enabledOpts = editsEnabledModel.getConfigOptions();
-    expect(enabledOpts.allowDimensionOrder.hidden).toBe(false);
-    expect(enabledOpts.allowMeasureOrder.hidden).toBe(false);
   });
 
   it('reorders dimensions (when allowDimensionOrder is on and rowSubtotals is off) and measures (when allowMeasureOrder is on) independently', () => {
