@@ -208,13 +208,13 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       if (typeof document !== 'undefined' && typeof document.elementFromPoint === 'function' && srcEvt.clientX !== undefined && srcEvt.clientY !== undefined) {
         const hitEl = document.elementFromPoint(srcEvt.clientX, srcEvt.clientY);
         const targetTh = hitEl && hitEl.closest ? hitEl.closest('#reportTable thead th') : null;
-        if (targetTh) {
-          const targetData = d3.select(targetTh).datum();
-          if (canDropOnCell(activeDragSource, targetData)) {
-            dropTarget = targetData;
-            clearDropIndicators(false);
-            targetTh.classList.add(targetData.column.pos < activeDragSource.column.pos ? 'drag-over-left' : 'drag-over-right');
-          }
+        const targetData = targetTh ? d3.select(targetTh).datum() : null;
+        clearDropIndicators(false);
+        if (targetData && canDropOnCell(activeDragSource, targetData)) {
+          dropTarget = targetData;
+          targetTh.classList.add(targetData.column.pos < activeDragSource.column.pos ? 'drag-over-left' : 'drag-over-right');
+        } else {
+          dropTarget = null;
         }
       }
     })
