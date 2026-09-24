@@ -61,7 +61,7 @@ application: report-table-extension {
 }
 ```
 
-For more details on custom visualizations in Looker, see the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/developing-custom-visualizations) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-visualizations).
+For more details on custom visualizations in Looker, see the Looker documentation on [developing custom visualizations using a project manifest](https://cloud.google.com/looker/docs/reference/param-manifest-visualization) or managing [Admin panel visualizations](https://cloud.google.com/looker/docs/admin-panel-platform-visualizations).
 
 ## Standalone usage outside Looker
 
