@@ -66,7 +66,9 @@ jobs:
           echo "$BODY" >> "$GITHUB_STEP_SUMMARY"
           gh api "repos/${{ github.repository }}/commits/${GITHUB_SHA}/comments" -f body="$BODY"
           PR=$(gh pr list --repo "${{ github.repository }}" --state merged --search "$GITHUB_SHA" --json number -q '.[0].number')
-          [ -n "$PR" ] && gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          if [ -n "$PR" ]; then
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
 
 
 
