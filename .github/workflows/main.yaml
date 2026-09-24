@@ -4,15 +4,70 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '**.md'
+
+env:
+  REGION: us-central1
+  APP_NAME: report-table
+  BUCKET_NAME: ${{ secrets.CDN_BUCKET_NAME }}
+  TYPE: viz
 
 jobs:
-  deploy:
+  build-and-upload-frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: "write"
+      pull-requests: "write"
+      id-token: "write"
+
     steps:
-      - name: Trigger Website Deploy
-        run: |
-          curl -fSL "$DEPLOY_URL"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Calculate short SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Upload frontend bundle to GCS commit ref
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          process_gcloudignore: false
+          path: dist
+          destination: ${{ env.BUCKET_NAME }}/${{ env.TYPE }}/${{ env.APP_NAME }}/${{ steps.vars.outputs.short_sha }}
+          parent: false
+
+      - name: Output CDN Links
         env:
-          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CDN_HOST: ${{ vars.CDN_HOST }}
+        run: |
+          SHORT="${GITHUB_SHA:0:7}"
+          BODY="### 🚀 CDN Deployment Links"$'\n\n'"**Commit (${SHORT}):**"$'\n'
+          for f in dist/*.js; do
+            BODY+="- ${CDN_HOST}/${{ env.TYPE }}/${{ env.APP_NAME }}/${SHORT}/${f#dist/}"$'\n'
+          done
+
+          echo "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          gh api "repos/${{ github.repository }}/commits/${GITHUB_SHA}/comments" -f body="$BODY"
+          PR=$(gh pr list --repo "${{ github.repository }}" --state merged --search "$GITHUB_SHA" --json number -q '.[0].number')
+          [ -n "$PR" ] && gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+
+
+
+
