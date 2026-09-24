@@ -15,7 +15,7 @@ jobs:
   build-and-upload-frontend:
     runs-on: ubuntu-latest
     permissions:
-      contents: "read"
+      contents: "write"
       id-token: "write"
 
     steps:
@@ -63,3 +63,25 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --path=/${{ env.TYPE }}/${{ env.APP_NAME }}/latest/* \
             --async
+
+      - name: Update Release Description with CDN Links
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CDN_HOST: ${{ vars.CDN_HOST }}
+        run: |
+          V_LINKS=""
+          L_LINKS=""
+          for f in dist/*.js; do
+            file="${f#dist/}"
+            V_LINKS+="- ${CDN_HOST}/${{ env.TYPE }}/${{ env.APP_NAME }}/${{ env.TAG }}/${file}"$'\n'
+            L_LINKS+="- ${CDN_HOST}/${{ env.TYPE }}/${{ env.APP_NAME }}/latest/${file}"$'\n'
+          done
+
+          CDN_LINKS="### 🚀 CDN Assets"$'\n\n'"**Version (${{ env.TAG }}):**"$'\n'"${V_LINKS}"$'\n'"**Latest:**"$'\n'"${L_LINKS}"
+
+          EXISTING_BODY=$(gh release view "${{ env.TAG }}" --json body -q .body)
+          NEW_BODY="${CDN_LINKS}"$'\n'"---"$'\n\n'"${EXISTING_BODY}"
+
+          gh release edit "${{ env.TAG }}" --notes "$NEW_BODY"
+
+          echo "$CDN_LINKS" >> "$GITHUB_STEP_SUMMARY"
