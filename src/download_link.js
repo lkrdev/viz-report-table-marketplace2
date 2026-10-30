@@ -11,21 +11,22 @@ function escapeHtmlAttr(str) {
   return escapeHtmlText(str).replace(/"/g, "&quot;");
 }
 
+function extractCellText(node) {
+  if (!node) return "";
+  if (node.nodeType === 3) return node.nodeValue || "";
+  const cl = node.classList;
+  if (node.nodeType !== 1 || (cl && (cl.contains("row-collapse-icon") || cl.contains("sort-icon") || cl.contains("sort-num")))) {
+    return "";
+  }
+  return Array.from(node.childNodes || [], extractCellText).join("");
+}
+
 function serializeElementWithInlineStyles(
   element,
   props,
-  prependPrefix = "",
   options = {},
 ) {
-  if (!element) return "";
-  if (element.nodeType === 3) {
-    const prefix = prependPrefix;
-    return prefix + escapeHtmlText(element.nodeValue || "");
-  }
-  if (element.nodeType !== 1) return "";
-  if (element.classList && element.classList.contains("row-collapse-icon")) {
-    return "";
-  }
+  if (!element || element.nodeType !== 1) return "";
 
   const tag = element.tagName.toLowerCase();
   if (tag === "tr" && options && options.excludeHiddenRows) {
@@ -46,10 +47,21 @@ function serializeElementWithInlineStyles(
     }
   }
 
-  const entries = [];
+  const isCell = tag === "td" || tag === "th";
+  const styleMap = new Map();
+  const existingInlineStyle = element.getAttribute("style") || "";
+  if (existingInlineStyle) {
+    existingInlineStyle.split(";").forEach((part) => {
+      const idx = part.indexOf(":");
+      if (idx > 0) {
+        styleMap.set(part.slice(0, idx).trim().toLowerCase(), part.slice(idx + 1).trim());
+      }
+    });
+  }
+
   let valign = "";
   let computedPaddingLeft = "";
-  if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
+  if (isCell && typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
     const cs = window.getComputedStyle(element);
     for (let i = 0; i < props.length; i++) {
       const key = props[i];
@@ -64,29 +76,25 @@ function serializeElementWithInlineStyles(
         computedPaddingLeft = val;
       }
       if (val) {
-        entries.push(`${key}: ${val}`);
+        styleMap.set(key, val);
       }
     }
   }
 
-  const existingInlineStyle = element.getAttribute("style") || "";
-  let extraStyle = existingInlineStyle ? existingInlineStyle.trim().replace(/;$/, "") : "";
-  let childIndentPrefix = prependPrefix;
-
+  let childIndentPrefix = "";
   if (tag === "td") {
     const pVal = element.style?.paddingLeft || computedPaddingLeft || "";
-    if (pVal && pVal !== "0px") {
-      const px = parseInt(pVal, 10);
-      if (!isNaN(px) && px > 0) {
-        const indentLevel = Math.max(1, Math.round(px / 16));
-        childIndentPrefix = "\u200B" + "\u00A0\u00A0\u00A0\u00A0".repeat(indentLevel);
-        const indentRule = `padding-left: ${pVal}; text-indent: ${indentLevel * 16}px`;
-        extraStyle = extraStyle ? `${extraStyle}; ${indentRule}` : indentRule;
-      }
+    const px = parseInt(pVal, 10);
+    // ponytail: 15px threshold skips 4-8px theme cell padding; singleIndex uses 15px and hierarchy uses 16px*depth
+    if (!isNaN(px) && px >= 15) {
+      const indentLevel = Math.max(1, Math.round(px / 16));
+      childIndentPrefix = "\u200B" + "\u00A0\u00A0\u00A0\u00A0".repeat(indentLevel);
+      styleMap.set("padding-left", pVal);
+      styleMap.set("text-indent", `${indentLevel * 16}px`);
     }
   }
 
-  const combinedStyle = [entries.join("; "), extraStyle].filter(Boolean).join("; ");
+  const combinedStyle = Array.from(styleMap, ([k, v]) => `${k}: ${v}`).join("; ");
 
   let attrStr = "";
   if (element.attributes) {
@@ -108,25 +116,13 @@ function serializeElementWithInlineStyles(
     return `<${tag}${attrStr}>`;
   }
 
-  let childrenHtml = "";
-  let prefixUsed = false;
-  const childNodes = element.childNodes || [];
-  for (let i = 0; i < childNodes.length; i++) {
-    const nextPrefix = !prefixUsed && childIndentPrefix ? childIndentPrefix : "";
-    const rendered = serializeElementWithInlineStyles(
-      childNodes[i],
-      props,
-      nextPrefix,
-      options,
-    );
-    if (rendered) {
-      if (nextPrefix) prefixUsed = true;
-      childrenHtml += rendered;
-    }
+  if (isCell) {
+    return `<${tag}${attrStr}>${childIndentPrefix}${escapeHtmlText(extractCellText(element))}</${tag}>`;
   }
-  if (!prefixUsed && childIndentPrefix && childrenHtml === "") {
-    childrenHtml = childIndentPrefix;
-  }
+
+  const childrenHtml = Array.from(element.childNodes || [], (c) =>
+    serializeElementWithInlineStyles(c, props, options),
+  ).join("");
 
   return `<${tag}${attrStr}>${childrenHtml}</${tag}>`;
 }
@@ -164,7 +160,7 @@ export function getTableExcelDataUrl(targetElement, options = {}) {
     return null;
   }
 
-  const tableHtml = serializeElementWithInlineStyles(tbl, props, "", options);
+  const tableHtml = serializeElementWithInlineStyles(tbl, props, options);
 
   const text =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
