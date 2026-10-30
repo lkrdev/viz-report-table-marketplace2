@@ -434,7 +434,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         text = null
       } else if (d.html) {
         if (config && (config.isExtension || config.disableDomParser)) {
-          text = String(d.html).replace(/<[^>]*>/g, '')
+          text = String(d.html).replace(/<[a-zA-Z/][^>]*>/g, '')
         } else {
           var parser = new DOMParser()
           var parsed_html = parser.parseFromString(d.html, 'text/html')

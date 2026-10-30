@@ -14,7 +14,6 @@ function escapeHtmlAttr(str) {
 function serializeElementWithInlineStyles(
   element,
   props,
-  styleCache,
   prependPrefix = "",
   options = {},
 ) {
@@ -30,7 +29,12 @@ function serializeElementWithInlineStyles(
 
   const tag = element.tagName.toLowerCase();
   if (tag === "tr" && options && options.excludeHiddenRows) {
-    if (element.style && element.style.display === "none") {
+    const inlineDisplay = element.style?.display;
+    let isHidden = inlineDisplay === "none";
+    if (!isHidden && typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
+      isHidden = window.getComputedStyle(element).display === "none";
+    }
+    if (isHidden) {
       return "";
     }
     const rowPath = element.getAttribute("data-subtotal-path") || "";
@@ -41,37 +45,28 @@ function serializeElementWithInlineStyles(
       return "";
     }
   }
-  const parentSig = element.parentElement
-    ? `${element.parentElement.tagName}.${element.parentElement.className || ""}`
-    : "";
-  const cacheKey = `${parentSig}>${element.tagName}.${element.className || ""}`;
 
-  let cached = styleCache.get(cacheKey);
-  if (!cached) {
-    const entries = [];
-    let valign = "";
-    let computedPaddingLeft = "";
-    if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
-      const cs = window.getComputedStyle(element);
-      for (let i = 0; i < props.length; i++) {
-        const key = props[i];
-        let val = cs.getPropertyValue(key);
-        if (key === "text-decoration" && val && val.indexOf("underline") > -1) {
-          val = "underline";
-        }
-        if (key === "vertical-align" && val) {
-          valign = val;
-        }
-        if (key === "padding-left" && val) {
-          computedPaddingLeft = val;
-        }
-        if (val) {
-          entries.push(`${key}: ${val}`);
-        }
+  const entries = [];
+  let valign = "";
+  let computedPaddingLeft = "";
+  if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
+    const cs = window.getComputedStyle(element);
+    for (let i = 0; i < props.length; i++) {
+      const key = props[i];
+      let val = cs.getPropertyValue(key);
+      if (key === "text-decoration" && val && val.indexOf("underline") > -1) {
+        val = "underline";
+      }
+      if (key === "vertical-align" && val) {
+        valign = val;
+      }
+      if (key === "padding-left" && val) {
+        computedPaddingLeft = val;
+      }
+      if (val) {
+        entries.push(`${key}: ${val}`);
       }
     }
-    cached = { baseStyle: entries.join("; "), valign, computedPaddingLeft };
-    styleCache.set(cacheKey, cached);
   }
 
   const existingInlineStyle = element.getAttribute("style") || "";
@@ -79,7 +74,7 @@ function serializeElementWithInlineStyles(
   let childIndentPrefix = prependPrefix;
 
   if (tag === "td") {
-    const pVal = element.style?.paddingLeft || cached.computedPaddingLeft || "";
+    const pVal = element.style?.paddingLeft || computedPaddingLeft || "";
     if (pVal && pVal !== "0px") {
       const px = parseInt(pVal, 10);
       if (!isNaN(px) && px > 0) {
@@ -91,7 +86,7 @@ function serializeElementWithInlineStyles(
     }
   }
 
-  const combinedStyle = [cached.baseStyle, extraStyle].filter(Boolean).join("; ");
+  const combinedStyle = [entries.join("; "), extraStyle].filter(Boolean).join("; ");
 
   let attrStr = "";
   if (element.attributes) {
@@ -101,8 +96,9 @@ function serializeElementWithInlineStyles(
       attrStr += ` ${attr.name}="${escapeHtmlAttr(attr.value)}"`;
     }
   }
-  if (cached.valign || element.getAttribute("valign")) {
-    attrStr += ` valign="${escapeHtmlAttr(cached.valign || element.getAttribute("valign"))}"`;
+  const elementValign = element.getAttribute("valign");
+  if (valign || elementValign) {
+    attrStr += ` valign="${escapeHtmlAttr(valign || elementValign)}"`;
   }
   if (combinedStyle) {
     attrStr += ` style="${escapeHtmlAttr(combinedStyle)}"`;
@@ -120,7 +116,6 @@ function serializeElementWithInlineStyles(
     const rendered = serializeElementWithInlineStyles(
       childNodes[i],
       props,
-      styleCache,
       nextPrefix,
       options,
     );
@@ -169,8 +164,7 @@ export function getTableExcelDataUrl(targetElement, options = {}) {
     return null;
   }
 
-  const styleCache = new Map();
-  const tableHtml = serializeElementWithInlineStyles(tbl, props, styleCache, "", options);
+  const tableHtml = serializeElementWithInlineStyles(tbl, props, "", options);
 
   const text =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
@@ -210,7 +204,7 @@ export async function downloadTableAsExcel(targetElement, options = {}) {
     let href = url;
     let objectUrl = null;
     try {
-      if (typeof Blob !== "undefined" && typeof URL?.createObjectURL === "function") {
+      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
         objectUrl = URL.createObjectURL(
           new Blob([text], { type: "application/vnd.ms-excel;charset=utf-8" }),
         );
@@ -225,7 +219,7 @@ export async function downloadTableAsExcel(targetElement, options = {}) {
     } catch {
       // ignore fallback errors
     } finally {
-      if (objectUrl && typeof URL?.revokeObjectURL === "function") {
+      if (objectUrl && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       }
     }
