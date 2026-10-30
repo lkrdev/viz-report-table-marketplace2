@@ -161,4 +161,37 @@ describe('downloadTableAsExcel', () => {
     expect(exportedHtml).not.toContain('Hidden Row');
     expect(exportedHtml).not.toContain('(Expand Men...)');
   });
+
+  it('should omit transparent child backgrounds and only indent cells with >= 15px padding', async () => {
+    const tbl = document.createElement('table');
+    tbl.id = 'reportTable';
+    tbl.innerHTML =
+      '<thead><tr><th><div><span>Outline Member</span><svg class="sort-icon"></svg></div></th></tr></thead>' +
+      '<tbody><tr>' +
+      '<td class="dimension" style="padding-left: 16px;"><div><span class="row-collapse-icon">[-]</span><span>AMER Ops</span></div></td>' +
+      '<td class="measure">832</td>' +
+      '</tr></tbody>';
+    document.body.appendChild(tbl);
+
+    jest.spyOn(window, 'getComputedStyle').mockImplementation((el) => {
+      const isCell = el.tagName === 'TH' || el.tagName === 'TD';
+      return {
+        getPropertyValue: (prop) => {
+          if (prop === 'background-color') return isCell ? 'rgb(197, 217, 241)' : 'rgba(0, 0, 0, 0)';
+          if (prop === 'padding-left') return el.style?.paddingLeft || '8px';
+          return '';
+        },
+      };
+    });
+
+    const promise = downloadTableAsExcel(tbl);
+    jest.advanceTimersByTime(500);
+    await promise;
+
+    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    expect(exportedHtml).not.toContain('rgba(0, 0, 0, 0)');
+    expect(exportedHtml).not.toContain('sort-icon');
+    expect(exportedHtml).toContain('\u200B\u00A0\u00A0\u00A0\u00A0AMER Ops</span>');
+    expect(exportedHtml).toContain('>832</td>');
+  });
 });

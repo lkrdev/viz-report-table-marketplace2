@@ -19,11 +19,11 @@ function serializeElementWithInlineStyles(
 ) {
   if (!element) return "";
   if (element.nodeType === 3) {
-    const prefix = prependPrefix;
-    return prefix + escapeHtmlText(element.nodeValue || "");
+    return prependPrefix + escapeHtmlText(element.nodeValue || "");
   }
   if (element.nodeType !== 1) return "";
-  if (element.classList && element.classList.contains("row-collapse-icon")) {
+  const cl = element.classList;
+  if (cl && (cl.contains("row-collapse-icon") || cl.contains("sort-icon") || cl.contains("sort-num"))) {
     return "";
   }
 
@@ -46,7 +46,17 @@ function serializeElementWithInlineStyles(
     }
   }
 
-  const entries = [];
+  const styleMap = new Map();
+  const existingInlineStyle = element.getAttribute("style") || "";
+  if (existingInlineStyle) {
+    existingInlineStyle.split(";").forEach((part) => {
+      const idx = part.indexOf(":");
+      if (idx > 0) {
+        styleMap.set(part.slice(0, idx).trim().toLowerCase(), part.slice(idx + 1).trim());
+      }
+    });
+  }
+
   let valign = "";
   let computedPaddingLeft = "";
   if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
@@ -64,29 +74,31 @@ function serializeElementWithInlineStyles(
         computedPaddingLeft = val;
       }
       if (val) {
-        entries.push(`${key}: ${val}`);
+        if (key === "background-color" && (val === "rgba(0, 0, 0, 0)" || val === "transparent")) {
+          continue;
+        }
+        if (key.startsWith("border") && val.startsWith("0px none")) {
+          continue;
+        }
+        styleMap.set(key, val);
       }
     }
   }
 
-  const existingInlineStyle = element.getAttribute("style") || "";
-  let extraStyle = existingInlineStyle ? existingInlineStyle.trim().replace(/;$/, "") : "";
   let childIndentPrefix = prependPrefix;
-
   if (tag === "td") {
     const pVal = element.style?.paddingLeft || computedPaddingLeft || "";
-    if (pVal && pVal !== "0px") {
-      const px = parseInt(pVal, 10);
-      if (!isNaN(px) && px > 0) {
-        const indentLevel = Math.max(1, Math.round(px / 16));
-        childIndentPrefix = "\u200B" + "\u00A0\u00A0\u00A0\u00A0".repeat(indentLevel);
-        const indentRule = `padding-left: ${pVal}; text-indent: ${indentLevel * 16}px`;
-        extraStyle = extraStyle ? `${extraStyle}; ${indentRule}` : indentRule;
-      }
+    const px = parseInt(pVal, 10);
+    // ponytail: 15px threshold skips 4-8px theme cell padding; singleIndex uses 15px and hierarchy uses 16px*depth
+    if (!isNaN(px) && px >= 15) {
+      const indentLevel = Math.max(1, Math.round(px / 16));
+      childIndentPrefix = "\u200B" + "\u00A0\u00A0\u00A0\u00A0".repeat(indentLevel);
+      styleMap.set("padding-left", pVal);
+      styleMap.set("text-indent", `${indentLevel * 16}px`);
     }
   }
 
-  const combinedStyle = [entries.join("; "), extraStyle].filter(Boolean).join("; ");
+  const combinedStyle = Array.from(styleMap, ([k, v]) => `${k}: ${v}`).join("; ");
 
   let attrStr = "";
   if (element.attributes) {
