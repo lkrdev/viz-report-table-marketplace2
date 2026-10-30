@@ -202,7 +202,7 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         .style("top", yPosition + "px")
         .style("z-index", "1000")
         .style("pointer-events", "none")
-        .html(html)
+        .text(html)
         .classed("hidden", false);
 
       if (typeof document !== 'undefined' && typeof document.elementFromPoint === 'function' && srcEvt.clientX !== undefined && srcEvt.clientY !== undefined) {
@@ -426,16 +426,20 @@ export const renderTable = async function(element, config, dataTable, callbacks 
         .enter()
         .append('td')
 
-  table_cells.html((d, i, nodes) => {
+  table_cells.each(function(d) {
       var text = ''
       if (Array.isArray(d.value)) {
         text = !(d.rendered === null) ? d.rendered : d.value.join(' ')
       } else if (typeof d.value === 'object' && d.value !== null && typeof d.value.series !== 'undefined') {
         text = null
       } else if (d.html) {
-        var parser = new DOMParser()
-        var parsed_html = parser.parseFromString(d.html, 'text/html')
-        text = parsed_html.documentElement.textContent
+        if (config && (config.isExtension || config.disableDomParser)) {
+          text = String(d.html).replace(/<[a-zA-Z/][^>]*>/g, '')
+        } else {
+          var parser = new DOMParser()
+          var parsed_html = parser.parseFromString(d.html, 'text/html')
+          text = parsed_html.documentElement.textContent
+        }
       } else if (d.rendered || d.rendered === '') {
         text = d.rendered
       } else {
@@ -444,36 +448,52 @@ export const renderTable = async function(element, config, dataTable, callbacks 
       text = String(text)
       text = text ? text.replace('-', '\u2011') : text
 
+      while (this.firstChild) {
+        this.removeChild(this.firstChild);
+      }
+
       if (d.cell_style && d.cell_style.includes('dimension')) {
           const isFirstCol = (d.colid === dataTable.firstVisibleDimension || d.colid === INDEX_COLUMN)
           if (isFirstCol) {
               const subtotalStyle = dataTable.subtotalStyle
-              if (d.cell_style.includes('subtotal') && String(d.value).indexOf('Subtotal|Others') === -1) {
-                  const rowPath = d.rowid.substring(9);
-                  var isCollapsed = false;
-                  if (config.startFolded) {
-                      isCollapsed = !(config.expandSubtotals && config.expandSubtotals.split(',').includes(rowPath))
-                  } else {
-                      isCollapsed = config.collapsedSubtotals && config.collapsedSubtotals.split(',').includes(rowPath)
+              const isCollapsibleSubtotal = d.cell_style.includes('subtotal') && String(d.value).indexOf('Subtotal|Others') === -1
+              const isCollapsedLeaf = subtotalStyle === 'collapsed' && !d.cell_style.includes('subtotal') && !d.cell_style.includes('total')
+              if (isCollapsibleSubtotal || isCollapsedLeaf) {
+                  const wrap = document.createElement('div');
+                  wrap.style.display = 'flex';
+                  wrap.style.alignItems = 'center';
+                  if (isCollapsibleSubtotal) {
+                      const rowPath = d.rowid.substring(9);
+                      const isCollapsed = config.startFolded
+                          ? !(config.expandSubtotals && config.expandSubtotals.split(',').includes(rowPath))
+                          : Boolean(config.collapsedSubtotals && config.collapsedSubtotals.split(',').includes(rowPath));
+                      const arrowStyle = config.arrowStyle || config.arrow_style || 'arrows';
+                      if (arrowStyle === 'plus_minus') {
+                          const icon = document.createElement('span');
+                          icon.className = 'row-collapse-icon';
+                          Object.assign(icon.style, { cursor: 'pointer', marginRight: '4px', verticalAlign: 'middle', flexShrink: '0', fontFamily: 'monospace' });
+                          icon.textContent = isCollapsed ? '[+]' : '[-]';
+                          wrap.appendChild(icon);
+                      } else {
+                          const svgNs = 'http://www.w3.org/2000/svg';
+                          const svg = document.createElementNS(svgNs, 'svg');
+                          Object.entries({ class: 'row-collapse-icon', width: '12', height: '12', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => svg.setAttribute(k, v));
+                          Object.assign(svg.style, { cursor: 'pointer', marginRight: '4px', verticalAlign: 'middle', flexShrink: '0' });
+                          const poly = document.createElementNS(svgNs, 'polyline');
+                          poly.setAttribute('points', isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15');
+                          svg.appendChild(poly);
+                          wrap.appendChild(svg);
+                      }
                   }
-                  
-                  const arrowStyle = config.arrowStyle || config.arrow_style || 'arrows'
-                  let collapseIcon = ''
-                  if (arrowStyle === 'plus_minus') {
-                      const symbol = isCollapsed ? '[+]' : '[-]';
-                      collapseIcon = `<span class="row-collapse-icon" style="cursor: pointer; margin-right: 4px; vertical-align: middle; flex-shrink: 0; font-family: monospace;">${symbol}</span>`;
-                  } else {
-                      const points = isCollapsed ? '6 9 12 15 18 9' : '6 15 12 9 18 15';
-                      collapseIcon = `<svg class="row-collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-right: 4px; vertical-align: middle; flex-shrink: 0;"><polyline points="${points}"></polyline></svg>`;
-                  }
-
-                  return `<div style="display:flex; align-items:center;">${collapseIcon}<span>${text}</span></div>`;
-              } else if (subtotalStyle === 'collapsed' && !d.cell_style.includes('subtotal') && !d.cell_style.includes('total')) {
-                  return `<div style="display:flex; align-items:center;"><span>${text}</span></div>`;
+                  const span = document.createElement('span');
+                  span.textContent = text;
+                  wrap.appendChild(span);
+                  this.appendChild(wrap);
+                  return;
               }
           }
       }
-      return text
+      this.textContent = text;
     })
     .attr('rowspan', d => d.rowspan)
     .attr('colspan', d => d.colspan)

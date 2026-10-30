@@ -376,10 +376,14 @@ export function getCellToolTip (rowid, colid) {
       
       var cell = row.data[column.id]
       var value = cell.rendered || cell.value
-      if (cell.html) { 
-        var parser = new DOMParser()
-        var parsed_html = parser.parseFromString(cell.html, 'text/html')
-        value = parsed_html.documentElement.textContent
+      if (cell.html) {
+        if (this.config && (this.config.isExtension || this.config.disableDomParser)) {
+          value = String(cell.html).replace(/<[a-zA-Z/][^>]*>/g, '')
+        } else {
+          var parser = new DOMParser()
+          var parsed_html = parser.parseFromString(cell.html, 'text/html')
+          value = parsed_html.documentElement.textContent
+        }
       }
 
       if (cell.cell_style.includes('estimate')) {
