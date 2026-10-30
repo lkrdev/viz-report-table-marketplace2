@@ -257,13 +257,29 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
     if (btn.empty()) {
       btn = visContainerSelection.append("button");
     }
-    btn.attr("class", "vis-action-btn").attr("id", id).attr("title", title).html("");
+    btn.attr("class", "vis-action-btn").attr("id", id).attr("title", title).text("");
     Object.entries(baseActionBtnStyle).forEach(([k, v]) => btn.style(k, v));
     btn.style("top", "10px").style("right", nextRightOffset());
     btn.on("click", () => onClick(btn));
     return btn;
   };
-  const addStrokeSvg = (btn, html) => btn.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 24 24").style("fill", "none").style("stroke", "#666").style("stroke-width", "2").style("stroke-linecap", "round").style("stroke-linejoin", "round").html(html);
+  const addStrokeSvg = (btn, elements) => {
+    const svg = btn
+      .append("svg")
+      .attr("width", "16")
+      .attr("height", "16")
+      .attr("viewBox", "0 0 24 24")
+      .style("fill", "none")
+      .style("stroke", "#666")
+      .style("stroke-width", "2")
+      .style("stroke-linecap", "round")
+      .style("stroke-linejoin", "round");
+    elements.forEach(([tag, attrs]) => {
+      const child = svg.append(tag);
+      Object.entries(attrs).forEach(([k, v]) => child.attr(k, v));
+    });
+    return svg;
+  };
 
   // Add download button only if exposeDownloadLink is true
   if (config.exposeDownloadLink) {
@@ -271,14 +287,21 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       btn.attr("class", "vis-action-btn loading");
       setTimeout(async () => {
         try {
-          await downloadTableAsExcel(element);
+          await downloadTableAsExcel(element, {
+            excludeHiddenRows: Boolean(
+              config.excludeHiddenRowsOnDownload || config.isExtension,
+            ),
+          });
         } finally {
           btn.attr("class", "vis-action-btn");
         }
       }, 250);
     });
-    downloadButton.append("svg").attr("width", "16").attr("height", "16").attr("viewBox", "0 0 640 640").style("fill", "#666")
-      .html('<path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM303 505C312.4 514.4 327.6 514.4 336.9 505L400.9 441C410.3 431.6 410.3 416.4 400.9 407.1C391.5 397.8 376.3 397.7 367 407.1L344 430.1L344 344C344 330.7 333.3 320 320 320C306.7 320 296 330.7 296 344L296 430.1L273 407.1C263.6 397.7 248.4 397.7 239.1 407.1C229.8 416.5 229.7 431.7 239.1 441L303.1 505z"/>');
+    addStrokeSvg(downloadButton, [
+      ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
+      ["polyline", { points: "7 10 12 15 17 10" }],
+      ["line", { x1: "12", y1: "15", x2: "12", y2: "3" }],
+    ]);
   }
 
   if (config.rowSubtotals && config.allowSubtotalToggle) {
@@ -286,9 +309,15 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       if (updateConfig) updateConfig({ hideSubtotals: !config.hideSubtotals });
       if (redraw && !element._isReactManaged) redraw();
     });
-    addStrokeSvg(toggleSubtotalsBtn, config.hideSubtotals
-      ? '<path d="M18 4H6l6 8-6 8h12" opacity="0.45"></path><line x1="3" y1="3" x2="21" y2="21"></line>'
-      : '<path d="M18 4H6l6 8-6 8h12"></path>');
+    addStrokeSvg(
+      toggleSubtotalsBtn,
+      config.hideSubtotals
+        ? [
+            ["path", { d: "M18 4H6l6 8-6 8h12", opacity: "0.45" }],
+            ["line", { x1: "3", y1: "3", x2: "21", y2: "21" }],
+          ]
+        : [["path", { d: "M18 4H6l6 8-6 8h12" }]],
+    );
   }
       
   if (dataTable.hasSubtotals) {
@@ -306,7 +335,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       })
       syncRowVisibility(element, config, dataTable, { updateConfig })
     });
-    addStrokeSvg(expandAllBtn, '<polyline points="6 9 12 15 18 9"></polyline>');
+    addStrokeSvg(expandAllBtn, [["polyline", { points: "6 9 12 15 18 9" }]]);
 
     const collapseAllBtn = addBtn("collapseAllBtn", "Collapse All", () => {
       element.querySelectorAll('#reportTable tbody tr.subtotal').forEach(rowEl => {
@@ -317,7 +346,7 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       })
       syncRowVisibility(element, config, dataTable, { updateConfig })
     });
-    addStrokeSvg(collapseAllBtn, '<polyline points="6 15 12 9 18 15"></polyline>');
+    addStrokeSvg(collapseAllBtn, [["polyline", { points: "6 15 12 9 18 15" }]]);
   }
 
   if (dataTable.clientSorts && dataTable.clientSorts.length > 0) {
@@ -330,7 +359,10 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       if (updateConfig) updateConfig({ clientSorts: [] })
       if (redraw) redraw()
     });
-    addStrokeSvg(clearSortsBtn, '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>');
+    addStrokeSvg(clearSortsBtn, [
+      ["line", { x1: "18", y1: "6", x2: "6", y2: "18" }],
+      ["line", { x1: "6", y1: "6", x2: "18", y2: "18" }],
+    ]);
   }
 
   const hasColumnOrderEdits = Boolean(
@@ -342,7 +374,10 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
       if (updateConfig) updateConfig({ resetUserEdits: true, columnOrder: {} });
       if (redraw && !element._isReactManaged) redraw();
     });
-    addStrokeSvg(resetEditsBtn, '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path>');
+    addStrokeSvg(resetEditsBtn, [
+      ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }],
+      ["path", { d: "M3 3v5h5" }],
+    ]);
   }
 
   visContainerSelection.selectAll(".vis-action-btn").each(function() {

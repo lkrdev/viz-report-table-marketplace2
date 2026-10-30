@@ -140,4 +140,25 @@ describe('downloadTableAsExcel', () => {
       expect.any(Error)
     );
   });
+
+  it('should exclude hidden and placeholder rows when excludeHiddenRows is enabled', async () => {
+    const tbl = document.createElement('table');
+    tbl.id = 'reportTable';
+    tbl.innerHTML =
+      '<tbody>' +
+      '<tr><td>Visible Row</td></tr>' +
+      '<tr style="display: none;"><td>Hidden Row</td></tr>' +
+      '<tr data-subtotal-path="All|(Expand Men...)"><td>(Expand Men...)</td></tr>' +
+      '</tbody>';
+    document.body.appendChild(tbl);
+
+    const promise = downloadTableAsExcel(tbl, { excludeHiddenRows: true });
+    jest.advanceTimersByTime(500);
+    await promise;
+
+    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    expect(exportedHtml).toContain('Visible Row');
+    expect(exportedHtml).not.toContain('Hidden Row');
+    expect(exportedHtml).not.toContain('(Expand Men...)');
+  });
 });
