@@ -162,7 +162,7 @@ describe('downloadTableAsExcel', () => {
     expect(exportedHtml).not.toContain('(Expand Men...)');
   });
 
-  it('should flatten inner cell wrappers and only indent cells with >= 15px padding', async () => {
+  it('should omit transparent child backgrounds and only indent cells with >= 15px padding', async () => {
     const tbl = document.createElement('table');
     tbl.id = 'reportTable';
     tbl.innerHTML =
@@ -191,7 +191,7 @@ describe('downloadTableAsExcel', () => {
     const exportedHtml = decodeURIComponent(mockLinkElement.href);
     expect(exportedHtml).not.toContain('rgba(0, 0, 0, 0)');
     expect(exportedHtml).not.toContain('sort-icon');
-    expect(exportedHtml).toContain('\u200B\u00A0\u00A0\u00A0\u00A0AMER Ops</td>');
+    expect(exportedHtml).toContain('\u200B\u00A0\u00A0\u00A0\u00A0AMER Ops</span>');
     expect(exportedHtml).toContain('>832</td>');
   });
 });

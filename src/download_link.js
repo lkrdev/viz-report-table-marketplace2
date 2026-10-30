@@ -11,22 +11,21 @@ function escapeHtmlAttr(str) {
   return escapeHtmlText(str).replace(/"/g, "&quot;");
 }
 
-function extractCellText(node) {
-  if (!node) return "";
-  if (node.nodeType === 3) return node.nodeValue || "";
-  const cl = node.classList;
-  if (node.nodeType !== 1 || (cl && (cl.contains("row-collapse-icon") || cl.contains("sort-icon") || cl.contains("sort-num")))) {
-    return "";
-  }
-  return Array.from(node.childNodes || [], extractCellText).join("");
-}
-
 function serializeElementWithInlineStyles(
   element,
   props,
+  prependPrefix = "",
   options = {},
 ) {
-  if (!element || element.nodeType !== 1) return "";
+  if (!element) return "";
+  if (element.nodeType === 3) {
+    return prependPrefix + escapeHtmlText(element.nodeValue || "");
+  }
+  if (element.nodeType !== 1) return "";
+  const cl = element.classList;
+  if (cl && (cl.contains("row-collapse-icon") || cl.contains("sort-icon") || cl.contains("sort-num"))) {
+    return "";
+  }
 
   const tag = element.tagName.toLowerCase();
   if (tag === "tr" && options && options.excludeHiddenRows) {
@@ -47,7 +46,6 @@ function serializeElementWithInlineStyles(
     }
   }
 
-  const isCell = tag === "td" || tag === "th";
   const styleMap = new Map();
   const existingInlineStyle = element.getAttribute("style") || "";
   if (existingInlineStyle) {
@@ -61,7 +59,7 @@ function serializeElementWithInlineStyles(
 
   let valign = "";
   let computedPaddingLeft = "";
-  if (isCell && typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
+  if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
     const cs = window.getComputedStyle(element);
     for (let i = 0; i < props.length; i++) {
       const key = props[i];
@@ -76,12 +74,18 @@ function serializeElementWithInlineStyles(
         computedPaddingLeft = val;
       }
       if (val) {
+        if (key === "background-color" && (val === "rgba(0, 0, 0, 0)" || val === "transparent")) {
+          continue;
+        }
+        if (key.startsWith("border") && val.startsWith("0px none")) {
+          continue;
+        }
         styleMap.set(key, val);
       }
     }
   }
 
-  let childIndentPrefix = "";
+  let childIndentPrefix = prependPrefix;
   if (tag === "td") {
     const pVal = element.style?.paddingLeft || computedPaddingLeft || "";
     const px = parseInt(pVal, 10);
@@ -116,13 +120,25 @@ function serializeElementWithInlineStyles(
     return `<${tag}${attrStr}>`;
   }
 
-  if (isCell) {
-    return `<${tag}${attrStr}>${childIndentPrefix}${escapeHtmlText(extractCellText(element))}</${tag}>`;
+  let childrenHtml = "";
+  let prefixUsed = false;
+  const childNodes = element.childNodes || [];
+  for (let i = 0; i < childNodes.length; i++) {
+    const nextPrefix = !prefixUsed && childIndentPrefix ? childIndentPrefix : "";
+    const rendered = serializeElementWithInlineStyles(
+      childNodes[i],
+      props,
+      nextPrefix,
+      options,
+    );
+    if (rendered) {
+      if (nextPrefix) prefixUsed = true;
+      childrenHtml += rendered;
+    }
   }
-
-  const childrenHtml = Array.from(element.childNodes || [], (c) =>
-    serializeElementWithInlineStyles(c, props, options),
-  ).join("");
+  if (!prefixUsed && childIndentPrefix && childrenHtml === "") {
+    childrenHtml = childIndentPrefix;
+  }
 
   return `<${tag}${attrStr}>${childrenHtml}</${tag}>`;
 }
@@ -160,7 +176,7 @@ export function getTableExcelDataUrl(targetElement, options = {}) {
     return null;
   }
 
-  const tableHtml = serializeElementWithInlineStyles(tbl, props, options);
+  const tableHtml = serializeElementWithInlineStyles(tbl, props, "", options);
 
   const text =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
