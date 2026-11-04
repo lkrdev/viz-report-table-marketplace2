@@ -341,7 +341,9 @@ export function addSubTotals () {
       // ponytail: skip redundant padded subtotal levels on ragged hierarchies in collapsed mode
       if (this.subtotalStyle === 'collapsed' && subTotalGroup.length >= 2) {
         const lastVal = subTotalGroup[subTotalGroup.length - 1];
-        if (!lastVal || lastVal === subTotalGroup.slice(0, -1).filter(Boolean).pop()) return;
+        const isValEmpty = lastVal === undefined || lastVal === null || lastVal === '';
+        const parentVals = subTotalGroup.slice(0, -1).filter(x => x !== undefined && x !== null && x !== '');
+        if (isValEmpty || lastVal === parentVals.pop()) return;
       }
       var subtotalRow = new Row('subtotal')
       var dims = subTotalGroup.join('|') ? subTotalGroup.join('|') : 'Others'
@@ -377,7 +379,7 @@ export function addSubTotals () {
             }
           } else if (existingSubCell && existingSubCell.value !== undefined) {
             cell.value = existingSubCell.value
-            cell.rendered = existingSubCell.rendered !== undefined ? existingSubCell.rendered : String(existingSubCell.value)
+            cell.rendered = existingSubCell.rendered !== undefined ? existingSubCell.rendered : (existingSubCell.value !== null ? String(existingSubCell.value) : '')
           }
           subtotalRow.data[column.id] = cell
         }

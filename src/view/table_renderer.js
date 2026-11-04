@@ -519,7 +519,11 @@ export const renderTable = async function(element, config, dataTable, callbacks 
             const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
               ? (activeDims.length || 1)
               : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
-            const distinctLevels = String(d.rowid || '').split('|').slice(0, depthLimit).filter((p, idx, a) => p && p !== a[idx - 1]).length;
+            const rowEl = nodes && nodes[i] && nodes[i].parentNode;
+            const row = rowEl ? d3.select(rowEl).datum() : null;
+            const distinctLevels = row && row.dimensionValues
+              ? row.dimensionValues.slice(0, depthLimit).filter((p, idx, a) => p !== undefined && p !== null && p !== '' && p !== a[idx - 1]).length
+              : String(d.rowid || '').split('|').slice(0, depthLimit).filter((p, idx, a) => p && p !== a[idx - 1]).length;
             depth = distinctLevels > 0
               ? (depthLimit < activeDims.length ? distinctLevels : Math.max(distinctLevels - 1, 0))
               : Math.max(depthLimit - 1, 0);
@@ -558,7 +562,11 @@ export const renderTable = async function(element, config, dataTable, callbacks 
             const depthLimit = (!dataTable.subtotalDepth || dataTable.subtotalDepth === '(all)')
               ? (activeDims.length || 1)
               : (parseInt(dataTable.subtotalDepth, 10) || (activeDims.length || 1));
-            const distinctLevels = String(d.rowid || '').split('|').slice(0, depthLimit).filter((p, idx, a) => p && p !== a[idx - 1]).length;
+            const rowEl = nodes && nodes[i] && nodes[i].parentNode;
+            const row = rowEl ? d3.select(rowEl).datum() : null;
+            const distinctLevels = row && row.dimensionValues
+              ? row.dimensionValues.slice(0, depthLimit).filter((p, idx, a) => p !== undefined && p !== null && p !== '' && p !== a[idx - 1]).length
+              : String(d.rowid || '').split('|').slice(0, depthLimit).filter((p, idx, a) => p && p !== a[idx - 1]).length;
             depth = distinctLevels > 0
               ? (depthLimit < activeDims.length ? distinctLevels : Math.max(distinctLevels - 1, 0))
               : Math.max(depthLimit - 1, 0);
