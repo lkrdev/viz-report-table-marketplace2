@@ -518,6 +518,7 @@ class VisPluginTableModel {
     }
 
     this.dimensions.forEach(dimension => {
+      if (dimension.name && dimension.name.startsWith('__lookbase_lvl_')) return
       var hasLineItems = false
       var allNull = true
       for (var i = 0; i < this.data.length; i++) {
