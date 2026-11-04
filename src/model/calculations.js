@@ -76,7 +76,7 @@ export function checkSubtotalsData(queryResponse) {
   if (!subtotalsMap) { return }
   const subtotalSets = queryResponse.subtotal_sets || queryResponse.subtotalSets
 
-  var depthsToProcess = (this.addSubtotalDepth === '(all)' || !this.addSubtotalDepth)
+  var depthsToProcess = (this.addSubtotalDepth === '(all)' || !this.addSubtotalDepth || this.subtotalStyle === 'collapsed')
     ? Object.keys(subtotalsMap)
     : [this.addSubtotalDepth.toString()]
 
@@ -282,9 +282,12 @@ export function buildTotals(queryResponse) {
 export function addSubTotals () { 
   const dimColspans = this.getDimensionColspans();
   var activeDims = this.dimensions.filter(d => !d.isNull && !this.config['hide|' + d.name] && this.config['style|' + d.name] !== 'hide');
+  const parsedDepth = parseInt(this.addSubtotalDepth, 10);
   var depths = this.addSubtotalDepth === '(all)'
                ? Array.from({length: Math.max(0, activeDims.length - 1)}, (_, i) => i + 1)
-               : (activeDims.length > 1 ? [Math.min(parseInt(this.addSubtotalDepth, 10) || 1, activeDims.length - 1)] : []);
+               : (this.subtotalStyle === 'collapsed' && !isNaN(parsedDepth)
+                   ? Array.from({length: Math.min(Math.max(0, parsedDepth), Math.max(0, activeDims.length - 1))}, (_, i) => i + 1)
+                   : (activeDims.length > 1 ? [Math.min(parsedDepth || 1, activeDims.length - 1)] : []));
 
   // Initialize row.sort to handle multiple subtotal depths
   this.data.forEach((row, i) => {
@@ -335,6 +338,11 @@ export function addSubTotals () {
 
     // GENERATE DATA ROWS FOR SUBTOTALS
     subTotalGroups.forEach((subTotalGroup, s) => {
+      // ponytail: skip redundant padded subtotal levels on ragged hierarchies in collapsed mode
+      if (this.subtotalStyle === 'collapsed' && subTotalGroup.length >= 2) {
+        const lastVal = subTotalGroup[subTotalGroup.length - 1];
+        if (!lastVal || lastVal === subTotalGroup.slice(0, -1).filter(Boolean).pop()) return;
+      }
       var subtotalRow = new Row('subtotal')
       var dims = subTotalGroup.join('|') ? subTotalGroup.join('|') : 'Others'
       subtotalRow.id = ['Subtotal', dims].join('|')
@@ -367,6 +375,9 @@ export function addSubTotals () {
               cell.value = subTotalGroup.join(' | ') ? subTotalGroup.join(' | ') : 'Others'
               cell.rendered = cell.value
             }
+          } else if (existingSubCell && existingSubCell.value !== undefined) {
+            cell.value = existingSubCell.value
+            cell.rendered = existingSubCell.rendered !== undefined ? existingSubCell.rendered : String(existingSubCell.value)
           }
           subtotalRow.data[column.id] = cell
         }
