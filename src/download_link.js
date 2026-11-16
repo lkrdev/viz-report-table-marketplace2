@@ -239,7 +239,11 @@ export async function downloadTableAsExcel(targetElement, options = {}) {
   if (useRelay) {
     const relayUrl = getDownloadRelayUrl();
     const relayOrigin = new URL(relayUrl).origin;
-    const nonce = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+    const nonce =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+    const senderOrigin = window.location?.origin || "null";
     let popup = null;
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
@@ -261,7 +265,7 @@ export async function downloadTableAsExcel(targetElement, options = {}) {
     timer.unref?.();
     window.addEventListener("message", onMessage);
     try {
-      popup = window.open(`${relayUrl}#${nonce}`, "_blank");
+      popup = window.open(`${relayUrl}#${nonce}:${senderOrigin}`, "_blank");
       if (popup) return;
     } catch (error) {
       console.error("Error clicking download link:", error);

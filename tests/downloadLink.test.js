@@ -77,8 +77,9 @@ describe('downloadTableAsExcel', () => {
     expect(openSpy).toHaveBeenCalledTimes(1);
     const [openedUrl, target] = openSpy.mock.calls[0];
     expect(target).toBe('_blank');
-    expect(openedUrl).toMatch(/^https:\/\/cdn\.lkr\.dev\/viz\/report-table\/latest\/download\.html#.+/);
-    const nonce = openedUrl.split('#')[1];
+    expect(openedUrl).toMatch(/^https:\/\/cdn\.lkr\.dev\/viz\/report-table\/latest\/download\.html#.+:.+/);
+    const hash = openedUrl.split('#')[1];
+    const nonce = hash.split(':')[0];
 
     // Ignore spoofed origin or wrong nonce
     window.dispatchEvent(
@@ -132,18 +133,34 @@ describe('downloadTableAsExcel', () => {
     const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
     Object.defineProperty(window, 'opener', { value: mockOpener, configurable: true });
-    window.location.hash = '#nonce123';
+    window.location.hash = '#nonce123:http://localhost';
 
     // Execute the static relay page script
     new Function(scriptMatch[1])();
 
     expect(mockOpener.postMessage).toHaveBeenCalledWith(
       { type: 'report-table-ready', nonce: 'nonce123' },
-      '*',
+      'http://localhost',
     );
+
+    // Reject spoofed e.origin
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://evil.example',
+        source: mockOpener,
+        data: {
+          type: 'report-table-download',
+          nonce: 'nonce123',
+          filename: 'table:export.xls',
+          html: '<html><body>ok</body></html>',
+        },
+      }),
+    );
+    expect(clickSpy).not.toHaveBeenCalled();
 
     window.dispatchEvent(
       new MessageEvent('message', {
+        origin: 'http://localhost',
         source: mockOpener,
         data: {
           type: 'report-table-download',
@@ -159,6 +176,28 @@ describe('downloadTableAsExcel', () => {
     jest.advanceTimersByTime(1000);
     expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-excel-url');
     expect(closeSpy).toHaveBeenCalledTimes(1);
+
+    // Also verify opaque "null" origin from sandboxed Looker Custom Viz iframe uses "*" postTargetOrigin and checks e.origin === "null"
+    window.location.hash = '#nonce456:null';
+    new Function(scriptMatch[1])();
+    expect(mockOpener.postMessage).toHaveBeenLastCalledWith(
+      { type: 'report-table-ready', nonce: 'nonce456' },
+      '*',
+    );
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'null',
+        source: mockOpener,
+        data: {
+          type: 'report-table-download',
+          nonce: 'nonce456',
+          filename: 'table.xls',
+          html: '<html><body>opaque</body></html>',
+        },
+      }),
+    );
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    jest.advanceTimersByTime(1000);
 
     Object.defineProperty(window, 'opener', { value: null, configurable: true });
     window.location.hash = '';
