@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
+  detectExportMode,
   downloadTableAsExcel,
   getDownloadRelayUrl,
   getTableExcelHtml,
@@ -72,7 +73,7 @@ describe('downloadTableAsExcel', () => {
     tbl.innerHTML = '<thead><tr><th>Header</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody>';
     document.body.appendChild(tbl);
 
-    await downloadTableAsExcel(tbl, { useRelay: true });
+    await downloadTableAsExcel(tbl, { mode: 'custom-viz' });
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     const [openedUrl, target] = openSpy.mock.calls[0];
@@ -119,13 +120,13 @@ describe('downloadTableAsExcel', () => {
     tbl.id = 'reportTable';
     document.body.appendChild(tbl);
 
-    await downloadTableAsExcel(tbl, { useRelay: true });
+    await downloadTableAsExcel(tbl, { mode: 'custom-viz' });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error clicking download link:', expect.any(Error));
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('should execute download.html relay handshake and auto-close after 1000ms', () => {
+  it('should execute download.html relay handshake, render fallback link, and auto-close after 1000ms', () => {
     const htmlFile = fs.readFileSync(path.resolve(__dirname, '../src/download.html'), 'utf8');
     const scriptMatch = htmlFile.match(/<script>([\s\S]*?)<\/script>/);
     const mockOpener = { postMessage: jest.fn() };
@@ -172,10 +173,15 @@ describe('downloadTableAsExcel', () => {
     );
 
     expect(clickSpy).toHaveBeenCalledTimes(1);
+    const fallbackLink = document.body.querySelector('a[download="table_export.xls"]');
+    expect(fallbackLink?.textContent).toBe('Click here if your download does not start automatically');
     expect(closeSpy).not.toHaveBeenCalled();
     jest.advanceTimersByTime(1000);
-    expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-excel-url');
+    expect(window.URL.revokeObjectURL).not.toHaveBeenCalled();
     expect(closeSpy).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new Event('pagehide'));
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-excel-url');
+    fallbackLink?.remove();
 
     // Also verify opaque "null" origin from sandboxed Looker Custom Viz iframe uses "*" postTargetOrigin and checks e.origin === "null"
     window.location.hash = '#nonce456:null';
@@ -198,9 +204,66 @@ describe('downloadTableAsExcel', () => {
     );
     expect(clickSpy).toHaveBeenCalledTimes(2);
     jest.advanceTimersByTime(1000);
+    document.body.querySelectorAll('a[download]').forEach((el) => el.remove());
 
     Object.defineProperty(window, 'opener', { value: null, configurable: true });
     window.location.hash = '';
+  });
+
+  it('should classify and export across all 3 Looker sandbox modes (extension-data-uri, extension-subdomain, custom-viz)', async () => {
+    const origOrigin = Object.getOwnPropertyDescriptor(window, 'origin');
+    const origPath = window.location.pathname;
+    const tbl = Object.assign(document.createElement('table'), {
+      id: 'reportTable',
+      innerHTML: '<tbody><tr><td>3-Mode Check</td></tr></tbody>',
+    });
+    document.body.appendChild(tbl);
+
+    try {
+      // Mode 1: Extension data: URI sandbox
+      const dataUriWin = { location: { protocol: 'data:', pathname: 'text/html;base64,abc' }, origin: 'null' };
+      expect(detectExportMode({ isExtension: true }, dataUriWin)).toBe('extension-data-uri');
+      const blockedOpen = jest.spyOn(window, 'open').mockImplementation(() => {
+        throw new Error('window.open is not available');
+      });
+      const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      await downloadTableAsExcel(tbl, { mode: 'extension-data-uri', isExtension: true });
+      expect(blockedOpen).not.toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+
+      // Mode 2: Extension subdomained extension.loader sandbox
+      window.history.replaceState({}, '', '/project-resource/public/extension.loader');
+      window.lookerExtensionMetadata = { lookerVersion: '26.14' };
+      expect(detectExportMode()).toBe('extension-subdomain');
+      await downloadTableAsExcel(tbl);
+      expect(blockedOpen).not.toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalledTimes(2);
+      delete window.lookerExtensionMetadata;
+
+      // Mode 3: Custom Visualization sandbox (window.location.origin is Looker host while window.origin is "null")
+      window.history.replaceState({}, '', '/visualizations/sandbox/render/report-table');
+      Object.defineProperty(window, 'origin', { value: 'null', configurable: true });
+      expect(detectExportMode()).toBe('custom-viz');
+
+      const mockPopup = { postMessage: jest.fn() };
+      blockedOpen.mockReturnValue(mockPopup);
+      await downloadTableAsExcel(tbl);
+      const [openedUrl] = blockedOpen.mock.calls[0];
+      expect(openedUrl).toMatch(/^https:\/\/cdn\.lkr\.dev\/viz\/report-table\/latest\/download\.html#[^:]+:null$/);
+      const nonce = openedUrl.split('#')[1].split(':')[0];
+      window.dispatchEvent(
+        new MessageEvent('message', { origin: 'https://cdn.lkr.dev', source: mockPopup, data: { type: 'report-table-ready', nonce } }),
+      );
+      expect(mockPopup.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'report-table-download', nonce }),
+        'https://cdn.lkr.dev',
+      );
+    } finally {
+      delete window.lookerExtensionMetadata;
+      window.history.replaceState({}, '', origPath);
+      if (origOrigin) Object.defineProperty(window, 'origin', origOrigin);
+      else delete window.origin;
+    }
   });
 
   it('should resolve getDownloadRelayUrl for CDN, localhost, and /plugins/ fallback', () => {

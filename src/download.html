@@ -17,9 +17,11 @@
     var a = document.createElement("a");
     a.href = url;
     a.download = String(d.filename || "table.xls").replace(/[\\/:*?"<>|]/g, "_");
+    a.textContent = "Click here if your download does not start automatically";
     document.body.appendChild(a);
+    window.addEventListener("pagehide", function () { URL.revokeObjectURL(url); });
     a.click();
-    setTimeout(function () { URL.revokeObjectURL(url); window.close(); }, 1000);
+    setTimeout(function () { window.close(); }, 1000);
   });
   // Opaque sandboxed iframes report origin "null", which throws SyntaxError if passed as postMessage targetOrigin
   var postTargetOrigin = /^https?:\/\//.test(expectedOrigin) ? expectedOrigin : "*";

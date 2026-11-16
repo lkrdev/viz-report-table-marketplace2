@@ -228,22 +228,30 @@ export function triggerBlobDownload(html, filename) {
   }
 }
 
+export function detectExportMode(options = {}, win = typeof window !== "undefined" ? window : undefined) {
+  if (options.mode) return options.mode;
+  if (!win) return "standalone";
+  const { protocol = "", pathname = "" } = win.location || {};
+  if (protocol === "data:") return "extension-data-uri";
+  if (options.isExtension || pathname.includes("/extension.loader") || win.lookerExtensionMetadata) return "extension-subdomain";
+  return pathname.includes("/visualizations/sandbox/") || win.self !== win.top ? "custom-viz" : "standalone";
+}
+
 export async function downloadTableAsExcel(targetElement, options = {}) {
   const html = getTableExcelHtml(targetElement, options);
   if (!html) return;
   const filename = `table-${new Date().toISOString().replace(/[:.]/g, "-")}.xls`;
-  const useRelay =
-    options.useRelay ??
-    (!options.isExtension && typeof window !== "undefined" && window.self !== window.top);
 
-  if (useRelay) {
+  if (detectExportMode(options) === "custom-viz") {
     const relayUrl = getDownloadRelayUrl();
     const relayOrigin = new URL(relayUrl).origin;
     const nonce =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2);
-    const senderOrigin = window.location?.origin || "null";
+    // Sandboxed Custom Viz iframes omit allow-same-origin, so their Web SecurityOrigin (window.origin / e.origin)
+    // is "null" even though window.location.origin still reflects the Looker host URL.
+    const senderOrigin = (typeof window.origin === "string" && window.origin) || "null";
     let popup = null;
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
