@@ -56,6 +56,7 @@ application: report-table-extension {
     dashboard_vis: yes
   }
   entitlements: {
+    use_downloads: yes
     core_api_methods: ["me", "artifact", "update_artifacts", "delete_artifact"]
   }
 }

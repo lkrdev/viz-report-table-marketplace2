@@ -1,5 +1,5 @@
 import * as d3Selection from 'd3-selection'
-import { getTableExcelDataUrl } from '../download_link'
+import { getTableExcelDataUrl, getTableExcelHtml, triggerBlobDownload } from '../download_link'
 import { VisPluginTableModel } from '../model/table_model'
 import { buildReportTable, getHeaderCellSortInfo } from './table_renderer'
 
@@ -222,17 +222,10 @@ export function attachStandaloneTableRunner(plugin) {
       element: el,
       asExcel: () => getTableExcelDataUrl(el),
       downloadExcel: (filename) => {
-        const url = getTableExcelDataUrl(el);
-        if (!url) return null;
-        if (typeof window !== 'undefined' && window.document) {
-          const downloadRef = document.createElement("a");
-          downloadRef.href = url;
-          downloadRef.download = filename || `table-${new Date().toISOString().slice(0, 10)}.xls`;
-          document.body.appendChild(downloadRef);
-          downloadRef.click();
-          document.body.removeChild(downloadRef);
-        }
-        return url;
+        const html = getTableExcelHtml(el);
+        if (!html) return null;
+        triggerBlobDownload(html, filename || `table-${new Date().toISOString().slice(0, 10)}.xls`);
+        return "data:application/vnd.ms-excel," + encodeURIComponent(html);
       }
     };
   };

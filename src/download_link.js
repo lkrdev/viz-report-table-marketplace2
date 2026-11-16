@@ -143,7 +143,24 @@ function serializeElementWithInlineStyles(
   return `<${tag}${attrStr}>${childrenHtml}</${tag}>`;
 }
 
-export function getTableExcelDataUrl(targetElement, options = {}) {
+const DEFAULT_RELAY_URL = "https://cdn.lkr.dev/viz/report-table/latest/download.html";
+const SCRIPT_SRC = typeof document !== "undefined" ? document.currentScript?.src || "" : "";
+
+export function getDownloadRelayUrl(scriptSrc = SCRIPT_SRC) {
+  try {
+    const u = new URL("download.html", scriptSrc);
+    if (
+      (u.protocol === "https:" && !u.pathname.startsWith("/plugins/")) ||
+      u.hostname === "localhost" ||
+      u.hostname === "127.0.0.1"
+    ) {
+      return u.href;
+    }
+  } catch {}
+  return DEFAULT_RELAY_URL;
+}
+
+export function getTableExcelHtml(targetElement, options = {}) {
   const props = [
     "font-size",
     "color",
@@ -162,10 +179,10 @@ export function getTableExcelDataUrl(targetElement, options = {}) {
   ];
 
   let tbl = targetElement;
-  if (typeof tbl === 'string' && typeof document !== 'undefined') {
+  if (typeof tbl === "string" && typeof document !== "undefined") {
     tbl = document.querySelector(tbl);
   }
-  if (!tbl && typeof document !== 'undefined') {
+  if (!tbl && typeof document !== "undefined") {
     tbl = document.getElementById("reportTable");
   } else if (tbl && tbl.id !== "reportTable") {
     tbl = tbl.querySelector("#reportTable") || tbl;
@@ -178,62 +195,79 @@ export function getTableExcelDataUrl(targetElement, options = {}) {
 
   const tableHtml = serializeElementWithInlineStyles(tbl, props, "", options);
 
-  const text =
+  return (
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
     '<meta http-equiv=Content-Type content="text/html; charset=utf-8"><body>' +
     '<meta name=Generator content="Microsoft Excel 15">' +
     tableHtml +
-    '</body></html>';
-
-  return "data:application/vnd.ms-excel," + encodeURIComponent(text);
+    "</body></html>"
+  );
 }
 
-// Alternative function that doesn't require setShowDownload callback
-export async function downloadTableAsExcel(targetElement, options = {}) {
-  const url = getTableExcelDataUrl(targetElement, options);
-  if (!url) return;
-  const text = decodeURIComponent(url.replace("data:application/vnd.ms-excel,", ""));
-  const filename = `table${new Date().toISOString()}.xls`;
+export function getTableExcelDataUrl(targetElement, options = {}) {
+  const text = getTableExcelHtml(targetElement, options);
+  return text ? "data:application/vnd.ms-excel," + encodeURIComponent(text) : null;
+}
 
-  setTimeout(() => {
-    try {
-      const ref = window.open("about:blank", "_blank");
-      if (ref && ref.document && ref.document.body) {
-        const downloadref = ref.document.createElement("a");
-        downloadref.href = url;
-        downloadref.download = filename;
-        ref.document.body.appendChild(downloadref);
-        downloadref.click();
-        ref.close();
+export function triggerBlobDownload(html, filename) {
+  if (typeof document === "undefined" || !document.body) return;
+  const objectUrl =
+    typeof Blob !== "undefined" && typeof URL?.createObjectURL === "function"
+      ? URL.createObjectURL(new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" }))
+      : null;
+  try {
+    const a = Object.assign(document.createElement("a"), {
+      href: objectUrl || "data:application/vnd.ms-excel," + encodeURIComponent(html),
+      download: filename,
+    });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch {} finally {
+    if (objectUrl) setTimeout(() => URL.revokeObjectURL?.(objectUrl), 1000);
+  }
+}
+
+export async function downloadTableAsExcel(targetElement, options = {}) {
+  const html = getTableExcelHtml(targetElement, options);
+  if (!html) return;
+  const filename = `table-${new Date().toISOString().replace(/[:.]/g, "-")}.xls`;
+  const useRelay =
+    options.useRelay ??
+    (!options.isExtension && typeof window !== "undefined" && window.self !== window.top);
+
+  if (useRelay) {
+    const relayUrl = getDownloadRelayUrl();
+    const relayOrigin = new URL(relayUrl).origin;
+    const nonce = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+    let popup = null;
+    const cleanup = () => {
+      window.removeEventListener("message", onMessage);
+      clearTimeout(timer);
+    };
+    const onMessage = (e) => {
+      if (
+        e.origin !== relayOrigin ||
+        e.source !== popup ||
+        e.data?.type !== "report-table-ready" ||
+        e.data?.nonce !== nonce
+      ) {
         return;
       }
+      cleanup();
+      popup.postMessage({ type: "report-table-download", nonce, filename, html }, relayOrigin);
+    };
+    const timer = setTimeout(cleanup, 15000);
+    timer.unref?.();
+    window.addEventListener("message", onMessage);
+    try {
+      popup = window.open(`${relayUrl}#${nonce}`, "_blank");
+      if (popup) return;
     } catch (error) {
       console.error("Error clicking download link:", error);
     }
+    cleanup();
+  }
 
-    // Fallback for sandboxed extension iframes where window.open is blocked or returns null
-    if (typeof document === "undefined" || !document.body) return;
-    let href = url;
-    let objectUrl = null;
-    try {
-      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
-        objectUrl = URL.createObjectURL(
-          new Blob([text], { type: "application/vnd.ms-excel;charset=utf-8" }),
-        );
-        href = objectUrl;
-      }
-      const downloadref = document.createElement("a");
-      downloadref.href = href;
-      downloadref.download = filename;
-      document.body.appendChild(downloadref);
-      downloadref.click();
-      document.body.removeChild(downloadref);
-    } catch {
-      // ignore fallback errors
-    } finally {
-      if (objectUrl && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      }
-    }
-  }, 500);
+  triggerBlobDownload(html, filename);
 }

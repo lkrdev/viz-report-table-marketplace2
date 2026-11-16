@@ -103,15 +103,17 @@ class VisPluginTableModel {
     this.hideZeroCols = config.hideZeroCols || false
     this.hideNullDimensionCols = config.hideNullDimensionCols || config.hideNullDimensions || config.hideNullDimensionColumns || config.hideNullDims || false
 
+    this.hasPivots = Array.isArray(queryResponse.pivots) ? queryResponse.pivots.length > 0 : Boolean(queryResponse.pivots)
     this.allowDimensionOrder = Boolean(config.allowUserEdits && config.allowDimensionOrder)
-    this.allowMeasureOrder = Boolean(config.allowUserEdits && config.allowMeasureOrder)
+    this.allowMeasureOrder = config.isExtension || typeof config.allowMeasureOrder !== 'undefined'
+      ? Boolean(config.allowUserEdits && config.allowMeasureOrder)
+      : !this.hasPivots
     this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
     this.hasTotals = typeof queryResponse.totals_data !== 'undefined' ? true : false
     this.calculateOthers = typeof queryResponse.truncated !== 'undefined' ? queryResponse.truncated && config.calculateOthers : false 
     this.hasSubtotals = false
     this.hasRowTotals = queryResponse.has_row_totals || false
-    this.hasPivots = Array.isArray(queryResponse.pivots) ? queryResponse.pivots.length > 0 : Boolean(queryResponse.pivots)
     this.hasSupers = typeof queryResponse.fields.supermeasure_like !== 'undefined' ? Boolean(queryResponse.fields.supermeasure_like.length) : false
 
     this.transposeTable = config.transposeTable || false
