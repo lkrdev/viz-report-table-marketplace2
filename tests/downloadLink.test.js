@@ -2,44 +2,27 @@
  * @jest-environment jsdom
  */
 
-import { downloadTableAsExcel } from '../src/download_link';
+import fs from 'fs';
+import path from 'path';
+import {
+  downloadTableAsExcel,
+  getDownloadRelayUrl,
+  getTableExcelHtml,
+} from '../src/download_link';
 
 describe('downloadTableAsExcel', () => {
-  let mockOpenWindow;
-  let mockLinkElement;
   let consoleErrorSpy;
 
   beforeEach(() => {
     jest.useFakeTimers();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    window.URL.createObjectURL = jest.fn(() => 'blob:test-excel-url');
     window.URL.revokeObjectURL = jest.fn();
-
-    mockLinkElement = {
-      href: '',
-      download: '',
-      click: jest.fn(),
-    };
-
-    mockOpenWindow = {
-      document: {
-        createElement: jest.fn().mockImplementation((tagName) => {
-          if (tagName === 'a') return mockLinkElement;
-          return {};
-        }),
-        body: {
-          appendChild: jest.fn(),
-        },
-      },
-      close: jest.fn(),
-    };
-
-    jest.spyOn(window, 'open').mockReturnValue(mockOpenWindow);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     jest.useRealTimers();
-    // Clean up DOM
     const tbl = document.getElementById('reportTable');
     if (tbl) tbl.remove();
   });
@@ -49,99 +32,202 @@ describe('downloadTableAsExcel', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith("Table element with id 'reportTable' not found");
   });
 
-  it('should successfully trigger download when reportTable exists', async () => {
-    // Set up a mock table in the DOM
+  it('should trigger in-frame Blob download in top-level or Extension mode without window.open', async () => {
+    const openSpy = jest.spyOn(window, 'open');
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
     const tbl = document.createElement('table');
     tbl.id = 'reportTable';
     tbl.innerHTML = '<thead><tr><th>Header</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody>';
     document.body.appendChild(tbl);
 
-    // Mock getComputedStyle to return a specific style
-    jest.spyOn(window, 'getComputedStyle').mockImplementation((el) => {
+    jest.spyOn(window, 'getComputedStyle').mockImplementation(() => {
       const styles = {
         'background-color': 'rgb(255, 0, 0)',
         'color': 'rgb(0, 0, 0)',
       };
-      return {
-        getPropertyValue: (prop) => styles[prop] || '',
-      };
+      return { getPropertyValue: (prop) => styles[prop] || '' };
     });
 
-    // Run the function
-    const promise = downloadTableAsExcel();
+    await downloadTableAsExcel(tbl, { isExtension: true });
 
-    // Fast-forward the setTimeout
-    jest.advanceTimersByTime(500);
-    await promise;
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(window.URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
 
-    // Verify window.open was called
-    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
+    const exportedHtml = getTableExcelHtml(tbl);
+    expect(exportedHtml).toContain('<table id="reportTable"');
+    expect(exportedHtml).toContain('Header');
 
-    // Verify an 'a' element was created in the opened window
-    expect(mockOpenWindow.document.createElement).toHaveBeenCalledWith('a');
-
-    // Verify it was appended to the opened window body
-    expect(mockOpenWindow.document.body.appendChild).toHaveBeenCalledWith(mockLinkElement);
-
-    // Verify href is a data URI containing the excel xml structure and table content
-    expect(mockLinkElement.href).toContain('data:application/vnd.ms-excel,');
-    expect(decodeURIComponent(mockLinkElement.href)).toContain('<table id="reportTable"');
-    expect(decodeURIComponent(mockLinkElement.href)).toContain('Header');
-
-    // Verify download attribute has the correct filename pattern
-    expect(mockLinkElement.download).toMatch(/^table.*\.xls$/);
-
-    // Verify the download link was clicked
-    expect(mockLinkElement.click).toHaveBeenCalled();
-
-    // Verify the opened window was closed
-    expect(mockOpenWindow.close).toHaveBeenCalled();
+    jest.advanceTimersByTime(1000);
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-excel-url');
   });
 
-  it('should remove row collapse icons from the generated Excel data', async () => {
+  it('should use postMessage download.html relay in Custom Viz iframe mode', async () => {
+    const mockPopup = { postMessage: jest.fn() };
+    const openSpy = jest.spyOn(window, 'open').mockReturnValue(mockPopup);
+
+    const tbl = document.createElement('table');
+    tbl.id = 'reportTable';
+    tbl.innerHTML = '<thead><tr><th>Header</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody>';
+    document.body.appendChild(tbl);
+
+    await downloadTableAsExcel(tbl, { useRelay: true });
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [openedUrl, target] = openSpy.mock.calls[0];
+    expect(target).toBe('_blank');
+    expect(openedUrl).toMatch(/^https:\/\/cdn\.lkr\.dev\/viz\/report-table\/latest\/download\.html#.+:.+/);
+    const hash = openedUrl.split('#')[1];
+    const nonce = hash.split(':')[0];
+
+    // Ignore spoofed origin or wrong nonce
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://evil.example',
+        source: mockPopup,
+        data: { type: 'report-table-ready', nonce },
+      }),
+    );
+    expect(mockPopup.postMessage).not.toHaveBeenCalled();
+
+    // Valid ready handshake from relay popup
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://cdn.lkr.dev',
+        source: mockPopup,
+        data: { type: 'report-table-ready', nonce },
+      }),
+    );
+
+    expect(mockPopup.postMessage).toHaveBeenCalledTimes(1);
+    const [payload, targetOrigin] = mockPopup.postMessage.mock.calls[0];
+    expect(targetOrigin).toBe('https://cdn.lkr.dev');
+    expect(payload.type).toBe('report-table-download');
+    expect(payload.nonce).toBe(nonce);
+    expect(payload.filename).toMatch(/^table-.*\.xls$/);
+    expect(payload.html).toContain('Header');
+  });
+
+  it('should fall back to in-frame Blob download if relay window.open throws', async () => {
+    jest.spyOn(window, 'open').mockImplementation(() => {
+      throw new Error('Popup blocked');
+    });
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const tbl = document.createElement('table');
+    tbl.id = 'reportTable';
+    document.body.appendChild(tbl);
+
+    await downloadTableAsExcel(tbl, { useRelay: true });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error clicking download link:', expect.any(Error));
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should execute download.html relay handshake and auto-close after 1000ms', () => {
+    const htmlFile = fs.readFileSync(path.resolve(__dirname, '../src/download.html'), 'utf8');
+    const scriptMatch = htmlFile.match(/<script>([\s\S]*?)<\/script>/);
+    const mockOpener = { postMessage: jest.fn() };
+    const closeSpy = jest.spyOn(window, 'close').mockImplementation(() => {});
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    Object.defineProperty(window, 'opener', { value: mockOpener, configurable: true });
+    window.location.hash = '#nonce123:http://localhost';
+
+    // Execute the static relay page script
+    new Function(scriptMatch[1])();
+
+    expect(mockOpener.postMessage).toHaveBeenCalledWith(
+      { type: 'report-table-ready', nonce: 'nonce123' },
+      'http://localhost',
+    );
+
+    // Reject spoofed e.origin
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://evil.example',
+        source: mockOpener,
+        data: {
+          type: 'report-table-download',
+          nonce: 'nonce123',
+          filename: 'table:export.xls',
+          html: '<html><body>ok</body></html>',
+        },
+      }),
+    );
+    expect(clickSpy).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'http://localhost',
+        source: mockOpener,
+        data: {
+          type: 'report-table-download',
+          nonce: 'nonce123',
+          filename: 'table:export.xls',
+          html: '<html><body>ok</body></html>',
+        },
+      }),
+    );
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(closeSpy).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1000);
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-excel-url');
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+
+    // Also verify opaque "null" origin from sandboxed Looker Custom Viz iframe uses "*" postTargetOrigin and checks e.origin === "null"
+    window.location.hash = '#nonce456:null';
+    new Function(scriptMatch[1])();
+    expect(mockOpener.postMessage).toHaveBeenLastCalledWith(
+      { type: 'report-table-ready', nonce: 'nonce456' },
+      '*',
+    );
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'null',
+        source: mockOpener,
+        data: {
+          type: 'report-table-download',
+          nonce: 'nonce456',
+          filename: 'table.xls',
+          html: '<html><body>opaque</body></html>',
+        },
+      }),
+    );
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    jest.advanceTimersByTime(1000);
+
+    Object.defineProperty(window, 'opener', { value: null, configurable: true });
+    window.location.hash = '';
+  });
+
+  it('should resolve getDownloadRelayUrl for CDN, localhost, and /plugins/ fallback', () => {
+    expect(getDownloadRelayUrl('https://cdn.lkr.dev/viz/report-table/abc1234/report_table.js')).toBe(
+      'https://cdn.lkr.dev/viz/report-table/abc1234/download.html',
+    );
+    expect(getDownloadRelayUrl('https://localhost:8080/report_table.js')).toBe(
+      'https://localhost:8080/download.html',
+    );
+    expect(getDownloadRelayUrl('https://customer.cloud.looker.com/plugins/visualizations/report_table.js')).toBe(
+      'https://cdn.lkr.dev/viz/report-table/latest/download.html',
+    );
+  });
+
+  it('should remove row collapse icons from the generated Excel data', () => {
     const tbl = document.createElement('table');
     tbl.id = 'reportTable';
     tbl.innerHTML = '<tbody><tr><td><span class="row-collapse-icon">[-]</span><span>July</span></td></tr></tbody>';
     document.body.appendChild(tbl);
 
-    const promise = downloadTableAsExcel();
-    jest.advanceTimersByTime(500);
-    await promise;
-
-    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    const exportedHtml = getTableExcelHtml(tbl);
     expect(exportedHtml).not.toContain('row-collapse-icon');
     expect(exportedHtml).not.toContain('[-]');
     expect(exportedHtml).toContain('July');
   });
 
-  it('should handle errors during download gracefully', async () => {
-    // Set up a mock table in the DOM
-    const tbl = document.createElement('table');
-    tbl.id = 'reportTable';
-    document.body.appendChild(tbl);
-
-    // Mock window.open to throw an error (e.g. popup blocked)
-    jest.spyOn(window, 'open').mockImplementation(() => {
-      throw new Error('Popup blocked');
-    });
-
-    // Run the function
-    const promise = downloadTableAsExcel();
-
-    // Fast-forward the setTimeout
-    jest.advanceTimersByTime(500);
-    
-    // Let's see if it throws/rejects or fails due to ReferenceError
-    await promise;
-
-    // We expect the original error to be logged to console.error
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error clicking download link:",
-      expect.any(Error)
-    );
-  });
-
-  it('should exclude hidden and placeholder rows when excludeHiddenRows is enabled', async () => {
+  it('should exclude hidden and placeholder rows when excludeHiddenRows is enabled', () => {
     const tbl = document.createElement('table');
     tbl.id = 'reportTable';
     tbl.innerHTML =
@@ -152,17 +238,13 @@ describe('downloadTableAsExcel', () => {
       '</tbody>';
     document.body.appendChild(tbl);
 
-    const promise = downloadTableAsExcel(tbl, { excludeHiddenRows: true });
-    jest.advanceTimersByTime(500);
-    await promise;
-
-    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    const exportedHtml = getTableExcelHtml(tbl, { excludeHiddenRows: true });
     expect(exportedHtml).toContain('Visible Row');
     expect(exportedHtml).not.toContain('Hidden Row');
     expect(exportedHtml).not.toContain('(Expand Men...)');
   });
 
-  it('should omit transparent child backgrounds and only indent cells with >= 15px padding', async () => {
+  it('should omit transparent child backgrounds and only indent cells with >= 15px padding', () => {
     const tbl = document.createElement('table');
     tbl.id = 'reportTable';
     tbl.innerHTML =
@@ -184,11 +266,7 @@ describe('downloadTableAsExcel', () => {
       };
     });
 
-    const promise = downloadTableAsExcel(tbl);
-    jest.advanceTimersByTime(500);
-    await promise;
-
-    const exportedHtml = decodeURIComponent(mockLinkElement.href);
+    const exportedHtml = getTableExcelHtml(tbl);
     expect(exportedHtml).not.toContain('rgba(0, 0, 0, 0)');
     expect(exportedHtml).not.toContain('sort-icon');
     expect(exportedHtml).toContain('\u200B\u00A0\u00A0\u00A0\u00A0AMER Ops</span>');

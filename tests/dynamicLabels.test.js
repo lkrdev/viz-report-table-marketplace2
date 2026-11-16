@@ -195,5 +195,11 @@ describe('Dynamic label and config option handling', () => {
       '2025.m2',
       '2025.m1',
     ]);
+
+    // Legacy non-extension flat table honors saved measure columnOrder without allowUserEdits
+    const legacyFlatModel = new VisPluginTableModel(rows, metadata, {
+      columnOrder: { m1: 10, m2: 0 },
+    });
+    expect(legacyFlatModel.columns.filter(c => !c.hide).map(c => c.id)).toEqual(['d1', 'd2', 'm2', 'm1']);
   });
 });

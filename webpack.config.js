@@ -1,4 +1,19 @@
+const fs = require('fs');
 const path = require('path');
+
+const emitDownloadHtmlPlugin = {
+  apply: (compiler) =>
+    compiler.hooks.thisCompilation.tap('EmitDownloadHtml', (c) =>
+      c.hooks.processAssets.tap('EmitDownloadHtml', () =>
+        c.emitAsset(
+          'download.html',
+          new compiler.webpack.sources.RawSource(
+            fs.readFileSync(path.resolve(__dirname, 'src/download.html'), 'utf8'),
+          ),
+        ),
+      ),
+    ),
+};
 
 const sharedModuleRules = [
   {
@@ -52,6 +67,7 @@ module.exports = [
     module: {
       rules: sharedModuleRules,
     },
+    plugins: [emitDownloadHtmlPlugin],
     devServer: {
       allowedHosts: 'all',
       headers: {

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Exporting...</title></head>
+<body><script>
+(function () {
+  var hash = location.hash.slice(1);
+  var idx = hash.indexOf(":");
+  var nonce = idx !== -1 ? hash.slice(0, idx) : hash;
+  var expectedOrigin = idx !== -1 ? hash.slice(idx + 1) : "*";
+  if (!nonce || !window.opener) return;
+  window.addEventListener("message", function onMsg(e) {
+    var d = e.data;
+    if (e.source !== window.opener || (expectedOrigin !== "*" && e.origin !== expectedOrigin)) return;
+    if (!d || d.type !== "report-table-download" || d.nonce !== nonce) return;
+    window.removeEventListener("message", onMsg);
+    var url = URL.createObjectURL(new Blob([String(d.html || "")], { type: "application/vnd.ms-excel;charset=utf-8" }));
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = String(d.filename || "table.xls").replace(/[\\/:*?"<>|]/g, "_");
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); window.close(); }, 1000);
+  });
+  // Opaque sandboxed iframes report origin "null", which throws SyntaxError if passed as postMessage targetOrigin
+  var postTargetOrigin = /^https?:\/\//.test(expectedOrigin) ? expectedOrigin : "*";
+  window.opener.postMessage({ type: "report-table-ready", nonce: nonce }, postTargetOrigin);
+})();
+</script></body>
+</html>

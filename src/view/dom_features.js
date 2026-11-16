@@ -283,19 +283,18 @@ export function renderFloatingActionBar(element, config, dataTable, callbacks = 
 
   // Add download button only if exposeDownloadLink is true
   if (config.exposeDownloadLink) {
-    const downloadButton = addBtn("downloadButton", "Download xls", (btn) => {
+    const downloadButton = addBtn("downloadButton", "Download xls", async (btn) => {
       btn.attr("class", "vis-action-btn loading");
-      setTimeout(async () => {
-        try {
-          await downloadTableAsExcel(element, {
-            excludeHiddenRows: Boolean(
-              config.excludeHiddenRowsOnDownload || config.isExtension,
-            ),
-          });
-        } finally {
-          btn.attr("class", "vis-action-btn");
-        }
-      }, 250);
+      try {
+        await downloadTableAsExcel(element, {
+          excludeHiddenRows: Boolean(
+            config.excludeHiddenRowsOnDownload || config.isExtension,
+          ),
+          isExtension: Boolean(config.isExtension),
+        });
+      } finally {
+        btn.attr("class", "vis-action-btn");
+      }
     });
     addStrokeSvg(downloadButton, [
       ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
