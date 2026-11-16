@@ -251,7 +251,8 @@ export async function downloadTableAsExcel(targetElement, options = {}) {
         : Math.random().toString(36).slice(2);
     // Sandboxed Custom Viz iframes omit allow-same-origin, so their Web SecurityOrigin (window.origin / e.origin)
     // is "null" even though window.location.origin still reflects the Looker host URL.
-    const senderOrigin = (typeof window.origin === "string" && window.origin) || "null";
+    const senderOrigin =
+      (typeof window.origin === "string" && window.origin) || window.location?.origin || "null";
     let popup = null;
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
