@@ -217,9 +217,10 @@ describe('Dynamic label and config option handling', () => {
     await renderTable(el, hydratedDefaults, hydratedCustomVizModel);
     expect(Array.from(el.querySelectorAll('#reportTable thead th.draggable-header'), th => th.textContent)).toEqual(['Meas 2', 'Meas 1']);
 
-    // Explicitly disabling allowMeasureOrder prevents measure reordering
+    // Explicitly disabling allowMeasureOrder (boolean or stringified) prevents measure reordering
     const disabledMeasureModel = new VisPluginTableModel(rows, metadata, { ...hydratedDefaults, allowMeasureOrder: false, columnOrder: { m1: 10, m2: 0 } });
     expect(disabledMeasureModel.columns.filter(c => !c.hide).map(c => c.id)).toEqual(['d1', 'd2', 'm1', 'm2']);
+    expect(new VisPluginTableModel(rows, metadata, { ...hydratedDefaults, allowMeasureOrder: 'false' }).allowMeasureOrder).toBe(false);
 
     // Legacy non-extension flat table without hydrated defaults still honors saved measure columnOrder
     const legacyFlatModel = new VisPluginTableModel(rows, metadata, {
