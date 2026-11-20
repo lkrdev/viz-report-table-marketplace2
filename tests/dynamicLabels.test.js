@@ -1,4 +1,6 @@
+/** @jest-environment jsdom */
 import { VisPluginTableModel } from '../src/vis_table_plugin';
+import { renderTable } from '../src/view/table_renderer';
 const fixtures = require('./fixtures.json');
 
 const parseJsonBi = (fixture, defaultSorts = []) => {
@@ -89,7 +91,7 @@ describe('Dynamic label and config option handling', () => {
     expect(lookerThemeModel.getConfigOptions().customTheme.hidden).toBe(true);
   });
 
-  it('places Theme options under section "Theme" and disables allowDimensionOrder and allowMeasureOrder (display_size: "half") via disabledReason unless allowUserEdits is enabled', () => {
+  it('exposes allowDimensionOrder (default: false) and allowMeasureOrder (default: true) in section "Theme" while keeping Extension-only options hidden in Custom Viz', () => {
     const { rows, metadata } = parseJsonBi(fixtures.history_created_month);
 
     const defaultModel = new VisPluginTableModel(rows, metadata, {});
@@ -100,13 +102,15 @@ describe('Dynamic label and config option handling', () => {
     expect(defaultOpts.allowUserFilters.hidden).toBe(true);
     expect(defaultOpts.allowDimensionOrder.section).toBe('Theme');
     expect(defaultOpts.allowDimensionOrder.display_size).toBe('half');
-    expect(defaultOpts.allowDimensionOrder.hidden).toBe(true);
+    expect(defaultOpts.allowDimensionOrder.hidden).toBe(false);
+    expect(defaultOpts.allowDimensionOrder.default).toBe(false);
     expect(defaultOpts.allowMeasureOrder.section).toBe('Theme');
     expect(defaultOpts.allowMeasureOrder.display_size).toBe('half');
-    expect(defaultOpts.allowMeasureOrder.hidden).toBe(true);
+    expect(defaultOpts.allowMeasureOrder.hidden).toBe(false);
+    expect(defaultOpts.allowMeasureOrder.default).toBe(true);
   });
 
-  it('reorders dimensions (when allowDimensionOrder is on and rowSubtotals is off) and measures (when allowMeasureOrder is on) independently', () => {
+  it('reorders dimensions (when allowDimensionOrder is on and rowSubtotals is off) and measures (when allowMeasureOrder is on) independently', async () => {
     const rows = [
       {
         'd1': { value: 'A', rendered: 'A' },
@@ -196,7 +200,29 @@ describe('Dynamic label and config option handling', () => {
       '2025.m1',
     ]);
 
-    // Legacy non-extension flat table honors saved measure columnOrder without allowUserEdits
+    // Hydrate defaults from tableModelCoreOptions onto config to match Looker's Custom Viz updateAsync payload
+    const hydratedDefaults = Object.fromEntries(
+      Object.entries(VisPluginTableModel.getCoreConfigOptions()).filter(([, o]) => 'default' in o).map(([k, o]) => [k, o.default]),
+    );
+    const hydratedCustomVizModel = new VisPluginTableModel(rows, metadata, {
+      ...hydratedDefaults,
+      columnOrder: { d1: 10, d2: 0, m1: 10, m2: 0 },
+    });
+    expect(hydratedCustomVizModel.allowDimensionOrder).toBe(false);
+    expect(hydratedCustomVizModel.allowMeasureOrder).toBe(true);
+    expect(hydratedCustomVizModel.columns.filter(c => !c.hide).map(c => c.id)).toEqual(['d1', 'd2', 'm2', 'm1']);
+
+    const el = document.createElement('div');
+    el.innerHTML = '<div id="tooltip" class="hidden"></div><div id="visContainer"></div>';
+    await renderTable(el, hydratedDefaults, hydratedCustomVizModel);
+    expect(Array.from(el.querySelectorAll('#reportTable thead th.draggable-header'), th => th.textContent)).toEqual(['Meas 2', 'Meas 1']);
+
+    // Explicitly disabling allowMeasureOrder (boolean or stringified) prevents measure reordering
+    const disabledMeasureModel = new VisPluginTableModel(rows, metadata, { ...hydratedDefaults, allowMeasureOrder: false, columnOrder: { m1: 10, m2: 0 } });
+    expect(disabledMeasureModel.columns.filter(c => !c.hide).map(c => c.id)).toEqual(['d1', 'd2', 'm1', 'm2']);
+    expect(new VisPluginTableModel(rows, metadata, { ...hydratedDefaults, allowMeasureOrder: 'false' }).allowMeasureOrder).toBe(false);
+
+    // Legacy non-extension flat table without hydrated defaults still honors saved measure columnOrder
     const legacyFlatModel = new VisPluginTableModel(rows, metadata, {
       columnOrder: { m1: 10, m2: 0 },
     });

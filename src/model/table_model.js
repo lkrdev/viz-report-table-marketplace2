@@ -104,10 +104,8 @@ class VisPluginTableModel {
     this.hideNullDimensionCols = config.hideNullDimensionCols || config.hideNullDimensions || config.hideNullDimensionColumns || config.hideNullDims || false
 
     this.hasPivots = Array.isArray(queryResponse.pivots) ? queryResponse.pivots.length > 0 : Boolean(queryResponse.pivots)
-    this.allowDimensionOrder = Boolean(config.allowUserEdits && config.allowDimensionOrder)
-    this.allowMeasureOrder = config.isExtension || typeof config.allowMeasureOrder !== 'undefined'
-      ? Boolean(config.allowUserEdits && config.allowMeasureOrder)
-      : !this.hasPivots
+    this.allowDimensionOrder = config.allowDimensionOrder === true || config.allowDimensionOrder === 'true'
+    this.allowMeasureOrder = config.allowMeasureOrder !== false && config.allowMeasureOrder !== 'false'
     this.clientSorts = config.clientSorts || []
     this.sorts = queryResponse.sorts
     this.hasTotals = typeof queryResponse.totals_data !== 'undefined' ? true : false

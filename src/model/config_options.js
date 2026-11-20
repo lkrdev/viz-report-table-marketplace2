@@ -87,18 +87,18 @@ export const tableModelCoreOptions = {
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Dimensions",
-    hidden: true,
+    hidden: false,
     default: false,
-    order: 8.4
+    order: 7.4
   },
   allowMeasureOrder: {
     section: 'Theme',
     type: 'boolean',
     display_size: 'half',
     label: "Reorder Measures",
-    hidden: true,
-    default: false,
-    order: 8.5
+    hidden: false,
+    default: true,
+    order: 7.5
   },
   allowUserFilters: {
     section: 'Theme',
@@ -343,8 +343,6 @@ export function getConfigOptions() {
   if (this.config.isExtension) {
     newOptions.allowUserEdits.hidden = false
     newOptions.allowUserFilters.hidden = false
-    newOptions.allowDimensionOrder.hidden = !this.config.allowUserEdits
-    newOptions.allowMeasureOrder.hidden = !this.config.allowUserEdits
   }
 
   var subtotal_options = []
